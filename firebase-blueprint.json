@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User preferences and settings.",
+      "type": "object",
+      "properties": {
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "enhancedThinkingEnabled": { "type": "boolean" },
+            "chatHistoryEnabled": { "type": "boolean" }
+          }
+        },
+        "theme": { "type": "string" }
+      }
+    },
+    "Session": {
+      "title": "Session",
+      "description": "A chat session containing metadata.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["title", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single message in a session.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "parts": { "type": "array" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["role", "parts", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and settings."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "Session",
+      "description": "Chat sessions belonging to the user."
+    },
+    "/users/{userId}/sessions/{sessionId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages within a session."
+    }
+  }
+}

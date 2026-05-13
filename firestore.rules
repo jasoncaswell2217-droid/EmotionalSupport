@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      // Mandating verified email for standard operations
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['preferences', 'theme']) 
+        && data.keys().size() == 2
+        && data.theme is string && data.theme.size() <= 64
+        && data.preferences is map
+        && data.preferences.keys().hasAll(['enhancedThinkingEnabled', 'chatHistoryEnabled'])
+        && data.preferences.keys().size() == 2
+        && data.preferences.enhancedThinkingEnabled is bool
+        && data.preferences.chatHistoryEnabled is bool;
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['title', 'createdAt'])
+        && data.keys().size() == 2
+        && data.title is string && data.title.size() <= 256
+        && data.createdAt is int;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['role', 'parts', 'timestamp'])
+        && data.keys().size() == 3
+        && data.role in ['user', 'model']
+        && data.parts is list
+        && data.parts.size() > 0 && data.parts.size() <= 100
+        && data.timestamp is int;
+    }
+
+    // --- Matches ---
+    match /users/{userId} {
+      // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
+      // but write operations normally require verification.
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming());
+
+      match /sessions/{sessionId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(sessionId) && isValidSession(incoming());
+        allow update: if isOwner(userId) && isValidSession(incoming()) && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['title'])
+        );
+        allow delete: if isOwner(userId);
+
+        match /messages/{messageId} {
+          allow list: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidId(messageId) && isValidMessage(incoming());
+          allow delete: if isOwner(userId);
+        }
+      }
+    }
+  }
+}
