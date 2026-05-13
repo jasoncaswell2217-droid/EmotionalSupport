@@ -1,0 +1,34 @@
+name: Build and Deploy to Namecheap
+on:
+  push:
+    branches:
+      - main # If your branch is called 'master', change 'main' to 'master'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-node: '20' # Uses a stable Node version to compile Vite
+
+      - name: Install Dependencies & Build
+        run: |
+          npm install
+          npm run build
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # If your build requires the API key
+
+      - name: Upload Production Files to Namecheap
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }} # Or replace with your domain, e.g., example.com
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/psychelense/
+          dangerous-clean-slate: false # Prevents it from wiping your main website files
