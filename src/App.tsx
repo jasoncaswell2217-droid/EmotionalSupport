@@ -27,7 +27,37 @@ interface Session {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'chat' | 'analytics'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'analytics' | 'admin'>('chat');
+  const [isLoading, setIsLoading] = useState(false);
+  const [role, setRole] = useState<'user' | 'admin'>('user');
+  const [preferences, setPreferences] = useState(() => {
+    const saved = localStorage.getItem('psych_preferences');
+    return saved ? JSON.parse(saved) : { chatHistoryEnabled: true, enhancedThinkingEnabled: false };
+  });
+  const [theme, setTheme] = useState<string>(() => {
+    return localStorage.getItem('psych_theme') || 'cybercore';
+  });
+  const [globalStats, setGlobalStats] = useState<any>(null);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+
+  // Global Stats Sync (Only for Admins to see details, but everyone needs it for increment)
+  useEffect(() => {
+    const statsRef = doc(db, 'stats', 'global');
+    return onSnapshot(statsRef, (snap) => {
+      if (snap.exists()) setGlobalStats(snap.data());
+    });
+  }, []);
+
+  // Fetch all users for Admin
+  useEffect(() => {
+    if (role !== 'admin' || currentView !== 'admin') return;
+
+    const usersRef = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
+      setAllUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
+  }, [role, currentView]);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
@@ -224,9 +254,11 @@ export default function App() {
           const savedPrefs = migrationDataRef.current.prefs;
           const savedTheme = migrationDataRef.current.theme;
           const userRef = doc(db, 'users', user.uid);
+          const isAdminEmail = user.email === 'jasoncaswell2217@gmail.com';
           await setDoc(userRef, {
             preferences: savedPrefs ? JSON.parse(savedPrefs) : preferences,
-            theme: savedTheme || theme
+            theme: savedTheme || theme,
+            role: isAdminEmail ? 'admin' : 'user'
           }, { merge: true });
         } catch (prefError) {
           console.error("MIGRATION_ERROR_PREFS:", prefError);
@@ -265,7 +297,50 @@ export default function App() {
     }
   }, [user]);
 
-  const [isLoading, setIsLoading] = useState(false);
+  // User Profile Sync
+  useEffect(() => {
+    if (!user) {
+      setRole('user');
+      return;
+    }
+
+    const userRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.role) setRole(data.role as 'user' | 'admin');
+        if (data.preferences) setPreferences(data.preferences);
+        if (data.theme) setTheme(data.theme);
+      } else {
+        // Initialize user doc if it doesn't exist
+        const isAdminEmail = user.email === 'jasoncaswell2217@gmail.com';
+        setDoc(userRef, {
+          preferences,
+          theme,
+          role: isAdminEmail ? 'admin' : 'user'
+        }, { merge: true }).catch(err => {
+          console.error("Failed to initialize user doc:", err);
+        });
+
+        // Increment user count in global stats
+        const statsRef = doc(db, 'stats', 'global');
+        getDoc(statsRef).then(sSnap => {
+          if (!sSnap.exists()) {
+            setDoc(statsRef, { totalUsers: 1, totalMessages: 0, createdAt: serverTimestamp() });
+          } else {
+            setDoc(statsRef, { totalUsers: (sSnap.data().totalUsers || 0) + 1 }, { merge: true });
+          }
+        });
+      }
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   const [loadingStepIndex, setLoadingStepIndex] = useState(-1);
   const [currentMood, setCurrentMood] = useState<string>("Observing...");
   const [showFullHistory, setShowFullHistory] = useState(false);
@@ -274,13 +349,6 @@ export default function App() {
   const [activeMobileView, setActiveMobileView] = useState<'chat' | 'history' | 'analytics'>('chat');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [preferences, setPreferences] = useState(() => {
-    const saved = localStorage.getItem('psych_preferences');
-    return saved ? JSON.parse(saved) : { chatHistoryEnabled: true, enhancedThinkingEnabled: false };
-  });
-  const [theme, setTheme] = useState<string>(() => {
-    return localStorage.getItem('psych_theme') || 'cybercore';
-  });
 
   const chatInstance = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -529,6 +597,9 @@ export default function App() {
       
       if (user) {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
+        // Increment global message count
+        const statsRef = doc(db, 'stats', 'global');
+        setDoc(statsRef, { totalMessages: (globalStats?.totalMessages || 0) + 1 }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -610,6 +681,9 @@ export default function App() {
       
       if (user) {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
+        // Increment global message count 
+        const statsRef = doc(db, 'stats', 'global');
+        setDoc(statsRef, { totalMessages: (globalStats?.totalMessages || 0) + 1 }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -769,6 +843,24 @@ export default function App() {
             {currentView === 'analytics' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-purple rounded-r-full" />}
           </button>
 
+          {role === 'admin' && (
+            <button 
+              onClick={() => {
+                setCurrentView('admin');
+                setActiveMobileView('chat');
+              }}
+              className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
+                currentView === 'admin' ? "bg-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_rgba(6,178,210,0.4)] ring-1 ring-brand-cyan/50" : "text-brand-text-muted hover:bg-brand-cyan/5 hover:text-brand-cyan"
+              )}
+              title="Administrator Matrix"
+            >
+              <Shield size={20} />
+              {currentView === 'admin' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-cyan rounded-r-full shadow-[0_0_10px_var(--theme-accent-1)]" />}
+              <div className="absolute top-0 right-0 w-2 h-2 bg-brand-cyan rounded-full border border-bento-bg" />
+            </button>
+          )}
+
           {!user && (
             <button 
               onClick={() => setShowLanding(true)}
@@ -790,7 +882,201 @@ export default function App() {
         </button>
       </nav>
 
-      {/* SIDEBAR - HISTORY (Only on Chat View) */}
+      {/* ADMIN VIEW */}
+      {currentView === 'admin' && role === 'admin' && (
+        <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-6 md:p-12 overflow-y-auto custom-scrollbar">
+          <div className="max-w-7xl mx-auto w-full space-y-12 pb-24">
+            <header className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
+                  <Shield size={36} className="text-brand-cyan" />
+                </div>
+                <div>
+                  <h1 className="text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+                    Administrator <span className="text-brand-cyan">Matrix</span>
+                  </h1>
+                  <p className="text-brand-text-muted text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+                    Neural Network Governance v1.2.6
+                  </p>
+                </div>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Quota Section */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="bento-card p-10 bg-gradient-to-br from-brand-cyan/10 via-transparent to-transparent border-brand-cyan/20">
+                   <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className="text-brand-cyan" size={24} />
+                      <h3 className="text-2xl font-display font-bold text-brand-text">Neural Quota Monitor</h3>
+                    </div>
+                    <div className="px-3 py-1 bg-brand-cyan/10 rounded-full text-[10px] font-mono text-brand-cyan border border-brand-cyan/20 animate-pulse">
+                      REAL-TIME SYNC
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Total Invocations</span>
+                          <Activity size={16} className="text-brand-cyan opacity-50" />
+                        </div>
+                        <div className="text-5xl font-display font-black text-brand-text italic">
+                          {globalStats?.totalMessages || 0}
+                        </div>
+                        <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                          Aggregated message count across the entire subject pool since initialization.
+                        </p>
+                      </div>
+
+                      <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Subject Pool Density</span>
+                          <Users size={16} className="text-brand-purple opacity-50" />
+                        </div>
+                        <div className="text-5xl font-display font-black text-brand-text italic">
+                          {allUsers.length}
+                        </div>
+                        <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                          Total unique identities registered in the database.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-brand-cyan/5 rounded-[2rem] border border-brand-cyan/10 p-8 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Cloud className="text-brand-cyan" size={18} />
+                          <h4 className="text-sm font-black uppercase tracking-widest text-brand-text">Usage Tracking Note</h4>
+                        </div>
+                        <p className="text-xs text-brand-text-muted leading-relaxed italic">
+                          "Since the Gemini AI Engine runs via your Google Cloud instance, you should monitor the **Google Cloud Console** for the most precise token-level analytics."
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3 mt-8">
+                        <a 
+                          href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-4 bg-brand-cyan text-black text-center font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-cyan/80 transition-all shadow-lg shadow-brand-cyan/20"
+                        >
+                          Google Cloud Console <ChevronDown size={16} className="-rotate-90" />
+                        </a>
+                        <a 
+                          href="https://console.firebase.google.com/project/_/firestore/usage"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-brand-text-muted text-center font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                        >
+                          Firestore Usage Statistics
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bento-card p-10 border-white/5 space-y-8">
+                  <div className="flex items-center gap-3">
+                    <Users className="text-brand-purple" size={24} />
+                    <h3 className="text-2xl font-display font-bold text-brand-text">Personnel Directory</h3>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-white/10 text-[10px] uppercase font-black tracking-widest text-brand-text-muted">
+                          <th className="pb-4 pl-2">Subject Email</th>
+                          <th className="pb-4">Access Tier</th>
+                          <th className="pb-4">Identification Hash</th>
+                          <th className="pb-4 pr-2 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {allUsers.map((u: any) => (
+                          <tr key={u.id} className="group hover:bg-white/5 transition-colors">
+                            <td className="py-4 pl-2 font-mono text-xs text-brand-text">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-brand-purple/20 flex items-center justify-center border border-brand-purple/20">
+                                  <LogIn size={14} className="text-brand-purple" />
+                                </div>
+                                <span>{u.id === user?.uid ? `${u.role === 'admin' ? 'SYSTEM ADM' : 'YOU'}` : (u.email || u.id.substring(0, 12))}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 font-mono text-[10px]">
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-full border font-black uppercase tracking-tighter",
+                                u.role === 'admin' ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan" : "bg-white/5 border-white/10 text-brand-text-muted"
+                              )}>
+                                {u.role || 'user'}
+                              </span>
+                            </td>
+                            <td className="py-4 font-mono text-[10px] text-brand-text-muted opacity-40">
+                              {u.id}
+                            </td>
+                            <td className="py-4 pr-2 text-right">
+                              <button className="p-2 hover:bg-white/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan">
+                                <ChevronDown size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Logs / Alerts */}
+              <div className="space-y-8">
+                 <div className="bento-card p-8 border-brand-cyan/10 space-y-6">
+                  <div className="flex items-center gap-2 text-brand-cyan">
+                    <Activity size={18} />
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em]">Neural Logs</h4>
+                  </div>
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                    {[
+                      { time: '14:21:05', log: 'Admin elevation detected for ' + (user?.email || 'subject'), type: 'security' },
+                      { time: '14:18:32', log: 'Global entropy sync complete.', type: 'sys' },
+                      { time: '14:15:10', log: 'New subject entry created: subjects/matrix_v1', type: 'user' },
+                      { time: '14:12:44', log: 'Neural diagnostic cycle success: 94.8% accuracy', type: 'info' }
+                    ].map((log, i) => (
+                      <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-2">
+                        <div className="flex justify-between items-center text-[8px] font-mono opacity-30 uppercase">
+                          <span>{log.time}</span>
+                          <span className="text-brand-cyan">{log.type}</span>
+                        </div>
+                        <p className="text-[10px] font-mono leading-relaxed text-brand-text-muted">{log.log}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bento-card p-8 border-brand-purple/10 bg-brand-purple/5 space-y-4">
+                  <div className="flex items-center gap-2 text-brand-purple">
+                    <Lock size={18} />
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em]">Encryption Tier</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-brand-text">
+                      <span>Neural Cipher</span>
+                      <span className="text-brand-purple">Active</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full w-[85%] bg-brand-purple shadow-[0_0_10px_var(--theme-accent-2)]" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-brand-text-muted leading-relaxed italic opacity-60">
+                    "RSA-4096 and AES-256-GCM protocols are currently securing all subject-AI transmissions."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
       <aside className={cn(
         "border-r border-bento-border flex flex-col bg-bento-bg/30 backdrop-blur-sm shrink-0 z-40 transition-all duration-300",
         "fixed inset-y-0 left-16 md:relative md:left-0",
@@ -813,7 +1099,7 @@ export default function App() {
               {!isSidebarCollapsed && (
                 <div className="flex flex-col">
                   <h1 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
-                  <span className="text-[9px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.5-polish</span>
+                  <span className="text-[9px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.7-dash</span>
                 </div>
               )}
             </div>
@@ -1149,20 +1435,29 @@ export default function App() {
                )}
              </AnimatePresence>
 
-             <div className="hidden sm:flex items-center gap-2 mr-2 px-3 py-1.5 bg-bento-card border border-bento-border rounded-lg text-[10px] font-mono text-brand-text-muted">
-               {user ? (
-                 <>
-                   <Cloud size={14} className="text-brand-cyan" />
-                   <span className="uppercase tracking-widest truncate max-w-[100px]">{user.email}</span>
-                   <button onClick={() => signOut(auth)} className="ml-2 hover:text-brand-cyan transition-colors" title="Log Out"><LogOut size={14} /></button>
-                 </>
-               ) : (
-                 <>
-                   <span className="uppercase tracking-widest">Local Mode</span>
-                   <button onClick={() => signInWithPopup(auth, googleProvider)} className="ml-2 hover:text-brand-cyan transition-colors" title="Cloud Sync"><LogIn size={14} /></button>
-                 </>
-               )}
-             </div>
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+               <div className="flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-4 md:py-2 bg-bento-card border border-bento-border rounded-xl text-[10px] md:text-[11px] font-mono shadow-inner shadow-black/40">
+                 {user ? (
+                   <>
+                     <div className="flex flex-col text-right">
+                       <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[80px] md:max-w-[140px] leading-tight grow">{user.email?.split('@')[0]}</span>
+                       {role === 'admin' && (
+                         <div className="flex items-center justify-end gap-1 mt-0.5">
+                           <Shield size={8} className="text-brand-cyan fill-brand-cyan/20" />
+                           <span className="text-[6px] md:text-[8px] font-black text-brand-cyan tracking-tighter md:tracking-widest uppercase italic">ADMIN</span>
+                         </div>
+                       )}
+                     </div>
+                     <div className="w-[1px] h-4 md:h-6 bg-white/10 mx-0.5 md:mx-1" />
+                     <button onClick={() => signOut(auth)} className="p-1 md:p-1.5 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-cyan transition-all" title="Terminate Session"><LogOut size={14} md:size={16} /></button>
+                   </>
+                 ) : (
+                   <>
+                     <span className="uppercase tracking-widest font-black opacity-40">Local Uplink</span>
+                     <button onClick={() => signInWithPopup(auth, googleProvider)} className="ml-2 hover:text-brand-cyan transition-colors" title="Establish Cloud Sync"><LogIn size={16} /></button>
+                   </>
+                 )}
+               </div>
 
 
             {/* Desktop only Matrix Toggle moved to a more subtle position or removed if unnecessary */}
@@ -1187,7 +1482,8 @@ export default function App() {
               )}
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* MESSAGES */}
         <div 

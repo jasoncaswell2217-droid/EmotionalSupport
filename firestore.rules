@@ -32,11 +32,19 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == 'jasoncaswell2217@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
     // --- Validation Helpers ---
     function isValidUser(data) {
-      return data.keys().hasAll(['preferences', 'theme']) 
-        && data.keys().size() == 2
+      return data.keys().hasAll(['preferences', 'theme', 'role']) 
+        && data.keys().size() == 3
         && data.theme is string && data.theme.size() <= 64
+        && data.role in ['user', 'admin']
         && data.preferences is map
         && data.preferences.keys().hasAll(['enhancedThinkingEnabled', 'chatHistoryEnabled'])
         && data.preferences.keys().size() == 2
@@ -64,9 +72,13 @@ service cloud.firestore {
     match /users/{userId} {
       // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
       // but write operations normally require verification.
-      allow get: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming());
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && (incoming().role == 'user' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        (incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['preferences', 'theme'])) || 
+        isAdmin()
+      );
 
       match /sessions/{sessionId} {
         allow list: if isOwner(userId);
@@ -83,6 +95,15 @@ service cloud.firestore {
           allow delete: if isOwner(userId);
         }
       }
+    }
+
+    match /stats/{docId} {
+      allow get: if isSignedIn();
+      allow update: if isSignedIn() && (
+        (docId == 'global' && incoming().diff(existing()).affectedKeys().hasOnly(['totalMessages'])) || 
+        isAdmin()
+      );
+      allow create, delete: if isAdmin();
     }
   }
 }

@@ -12,7 +12,8 @@
             "chatHistoryEnabled": { "type": "boolean" }
           }
         },
-        "theme": { "type": "string" }
+        "theme": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
       }
     },
     "Session": {

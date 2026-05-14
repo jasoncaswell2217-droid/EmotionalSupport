@@ -323,7 +323,7 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
       {/* Footer Disclaimer for Mobile */}
       <div className="w-full px-6 py-6 border-t border-white/5 mt-auto bg-black lg:hidden z-10">
         <p className="text-[9px] text-brand-text-muted leading-relaxed text-center uppercase tracking-widest opacity-40">
-          Educational Support Framework • Not a Clinical Service • v1.2.5-polish
+          Educational Support Framework • Not a Clinical Service • v1.2.6-admin
         </p>
       </div>
     </div>
