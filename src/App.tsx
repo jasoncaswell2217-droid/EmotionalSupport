@@ -945,8 +945,21 @@ export default function App() {
                         <div className="text-5xl font-display font-black text-brand-text italic">
                           {globalStats?.totalMessages || 0}
                         </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
+                            <span>Limit Threshold</span>
+                            <span>{Math.round(((globalStats?.totalMessages || 0) / 10000) * 100)}%</span>
+                          </div>
+                          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(100, ((globalStats?.totalMessages || 0) / 10000) * 100)}%` }}
+                              className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
+                            />
+                          </div>
+                        </div>
                         <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
-                          Aggregated message count across the entire subject pool since initialization.
+                          Aggregated message count across the entire subject pool. Threshold set at 10k messages for standard tier.
                         </p>
                       </div>
 
@@ -958,8 +971,21 @@ export default function App() {
                         <div className="text-5xl font-display font-black text-brand-text italic">
                           {allUsers.length}
                         </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
+                            <span>Matrix Capacity</span>
+                            <span>{Math.round((allUsers.length / 50) * 100)}%</span>
+                          </div>
+                          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(100, (allUsers.length / 50) * 100)}%` }}
+                              className="h-full bg-brand-purple shadow-[0_0_8px_var(--theme-accent-2)]" 
+                            />
+                          </div>
+                        </div>
                         <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
-                          Total unique identities registered in the database.
+                          Total unique identities registered. Current matrix capacity calibrated for 50 distinct subjects.
                         </p>
                       </div>
                     </div>
@@ -1415,7 +1441,7 @@ export default function App() {
 
         {/* TOP BAR */}
         <header className="h-16 border-b border-bento-border px-4 md:px-8 flex items-center justify-between bg-bento-bg/80 backdrop-blur-xl z-20 shrink-0">
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             <button 
               onClick={() => {
                 if (window.innerWidth < 768) {
@@ -1424,18 +1450,45 @@ export default function App() {
                   setIsSidebarCollapsed(!isSidebarCollapsed);
                 }
               }}
-              className="p-3 -ml-2 text-brand-text-muted hover:text-brand-cyan transition-colors"
+              className="p-3 -ml-2 text-brand-text-muted hover:text-brand-cyan transition-colors shrink-0"
               aria-label="Toggle Sessions"
             >
               <PanelLeft size={22} className={cn((!isSidebarCollapsed || activeMobileView === 'history') && "text-brand-cyan")} />
             </button>
-            <div className="hidden xs:flex px-2 md:px-3 py-1.5 bg-brand-cyan/10 rounded-full border border-brand-cyan/20 text-[9px] md:text-[10px] font-black text-brand-cyan uppercase tracking-widest items-center gap-1.5 md:gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-cyan"></span>
-              </span>
-              <span className="hidden xs:inline">CORE SYNC ACTIVE</span>
-              <span className="xs:hidden">ACTIVE</span>
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+              <div className="flex px-2 md:px-3 py-1 bg-brand-cyan/10 rounded-full border border-brand-cyan/20 text-[8px] md:text-[10px] font-black text-brand-cyan uppercase tracking-widest items-center gap-1.5 md:gap-2 shrink-0">
+                <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-brand-cyan"></span>
+                </span>
+                <span className="hidden sm:inline">CORE SYNC ACTIVE</span>
+                <span className="sm:hidden text-[7px]">SYNC</span>
+              </div>
+
+              {role === 'admin' && globalStats && (
+                <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-black/40 border border-white/5 rounded-full text-[9px] font-mono shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <Activity size={10} className="text-brand-cyan" />
+                    <span className="text-brand-text-muted uppercase">LOAD</span>
+                    <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-brand-cyan" 
+                        style={{ width: `${Math.min(100, (globalStats.totalMessages / 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-[1px] h-3 bg-white/10" />
+                  <div className="flex items-center gap-1.5">
+                    <Users size={10} className="text-brand-purple" />
+                    <span className="text-brand-text-muted uppercase">NODES</span>
+                    <span className="text-brand-purple font-black">{globalStats.totalUsers || 0}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-[7px] font-mono text-brand-text-muted uppercase tracking-widest shrink-0">
+                v1.2.8-stable
+              </div>
             </div>
           </div>
           
@@ -1462,8 +1515,10 @@ export default function App() {
                        <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[80px] md:max-w-[160px] leading-tight grow">{user.email?.split('@')[0]}</span>
                        {role === 'admin' && (
                          <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                           <div className="w-1 h-1 rounded-full bg-brand-cyan animate-pulse" />
-                           <span className="text-[7px] md:text-[9px] font-black text-brand-cyan tracking-wider uppercase italic drop-shadow-[0_0_5px_var(--theme-accent-1)]">Administrator Dashboard</span>
+                           <div className="px-2 py-0.5 rounded-full bg-brand-cyan/20 border border-brand-cyan/30 flex items-center gap-1 shadow-[0_0_10px_rgba(6,178,210,0.2)]">
+                             <Shield size={8} className="text-brand-cyan" />
+                             <span className="text-[7px] md:text-[8px] font-black text-brand-cyan tracking-wider uppercase italic">Admin Priority</span>
+                           </div>
                          </div>
                        )}
                      </div>

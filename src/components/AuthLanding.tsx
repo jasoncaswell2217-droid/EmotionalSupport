@@ -65,7 +65,7 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-black text-brand-text flex flex-col items-center justify-center relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-black text-brand-text flex flex-col items-center justify-start lg:justify-center relative overflow-y-auto overflow-x-hidden font-sans custom-scrollbar">
       {/* Dynamic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-brand-cyan/10 blur-[150px] animate-pulse" />
@@ -73,7 +73,7 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none" />
       </div>
 
-      <div className="w-full max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center z-10 py-12">
+      <div className="w-full max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center z-10 py-12 lg:py-0">
         {/* Left Side: Brand & Disclaimer */}
         <motion.div 
           initial={{ opacity: 0, x: -30 }}
