@@ -35,7 +35,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-        (request.auth.token.email == 'jasoncaswell2217@gmail.com' && request.auth.token.email_verified == true)
+        request.auth.token.email == 'jasoncaswell2217@gmail.com'
       );
     }
 
@@ -98,12 +98,12 @@ service cloud.firestore {
     }
 
     match /stats/{docId} {
-      allow get: if isSignedIn();
+      allow read: if isAdmin();
       allow update: if isSignedIn() && (
-        (docId == 'global' && incoming().diff(existing()).affectedKeys().hasOnly(['totalMessages'])) || 
+        (docId == 'global' && incoming().diff(existing()).affectedKeys().hasOnly(['totalMessages', 'totalUsers', 'updatedAt'])) || 
         isAdmin()
       );
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin();
     }
   }
 }

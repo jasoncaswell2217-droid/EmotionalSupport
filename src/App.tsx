@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { auth, db, googleProvider, OperationType, handleFirestoreError } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, writeBatch, Timestamp, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, writeBatch, Timestamp, serverTimestamp, increment } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie } from 'recharts';
 
 const THEMES = [
@@ -40,27 +40,46 @@ export default function App() {
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
 
-  // Global Stats Sync (Only for Admins to see details, but everyone needs it for increment)
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
+
+  // Global Stats Sync (Only for Admins to see details)
   useEffect(() => {
+    if (!user || role !== 'admin') {
+      setGlobalStats(null);
+      return;
+    }
+
     const statsRef = doc(db, 'stats', 'global');
-    return onSnapshot(statsRef, (snap) => {
+    const unsubscribe = onSnapshot(statsRef, (snap) => {
       if (snap.exists()) setGlobalStats(snap.data());
+    }, (error) => {
+      // Permission errors are expected for non-admins if rules are strict, 
+      // but we guard this effect with role === 'admin' now.
+      console.error("Global Stats Error:", error);
     });
-  }, []);
+
+    return () => unsubscribe();
+  }, [user, role]);
 
   // Fetch all users for Admin
   useEffect(() => {
-    if (role !== 'admin' || currentView !== 'admin') return;
+    if (role !== 'admin' || currentView !== 'admin' || !user) {
+      setAllUsers([]);
+      return;
+    }
 
     const usersRef = collection(db, 'users');
     const unsubscribe = onSnapshot(usersRef, (snapshot) => {
       setAllUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        handleFirestoreError(error, OperationType.GET, 'users');
+      }
     });
     return () => unsubscribe();
-  }, [role, currentView]);
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [showLanding, setShowLanding] = useState(true);
+  }, [role, currentView, user]);
   const [sessions, setSessions] = useState<Record<string, Session>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isMigrating, setIsMigrating] = useState(false);
@@ -324,12 +343,12 @@ export default function App() {
 
         // Increment user count in global stats
         const statsRef = doc(db, 'stats', 'global');
-        getDoc(statsRef).then(sSnap => {
-          if (!sSnap.exists()) {
-            setDoc(statsRef, { totalUsers: 1, totalMessages: 0, createdAt: serverTimestamp() });
-          } else {
-            setDoc(statsRef, { totalUsers: (sSnap.data().totalUsers || 0) + 1 }, { merge: true });
-          }
+        setDoc(statsRef, { 
+          totalUsers: increment(1),
+          updatedAt: serverTimestamp() 
+        }, { merge: true }).catch(() => {
+          // If doc doesn't exist, set it properly (Admin usually initializes)
+          setDoc(statsRef, { totalUsers: 1, totalMessages: 0, createdAt: serverTimestamp() }, { merge: true }).catch(() => {});
         });
       }
     }, (error) => {
@@ -599,7 +618,7 @@ export default function App() {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
         // Increment global message count
         const statsRef = doc(db, 'stats', 'global');
-        setDoc(statsRef, { totalMessages: (globalStats?.totalMessages || 0) + 1 }, { merge: true }).catch(() => {});
+        setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -683,7 +702,7 @@ export default function App() {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
         // Increment global message count 
         const statsRef = doc(db, 'stats', 'global');
-        setDoc(statsRef, { totalMessages: (globalStats?.totalMessages || 0) + 1 }, { merge: true }).catch(() => {});
+        setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -1436,20 +1455,22 @@ export default function App() {
              </AnimatePresence>
 
             <div className="flex items-center gap-2 md:gap-3 shrink-0">
-               <div className="flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-4 md:py-2 bg-bento-card border border-bento-border rounded-xl text-[10px] md:text-[11px] font-mono shadow-inner shadow-black/40">
+               <div className="flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-5 md:py-2.5 bg-bento-card border border-bento-border rounded-xl text-[10px] md:text-[11px] font-mono shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
                  {user ? (
                    <>
                      <div className="flex flex-col text-right">
-                       <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[80px] md:max-w-[140px] leading-tight grow">{user.email?.split('@')[0]}</span>
+                       <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[80px] md:max-w-[160px] leading-tight grow">{user.email?.split('@')[0]}</span>
                        {role === 'admin' && (
-                         <div className="flex items-center justify-end gap-1 mt-0.5">
-                           <Shield size={8} className="text-brand-cyan fill-brand-cyan/20" />
-                           <span className="text-[6px] md:text-[8px] font-black text-brand-cyan tracking-tighter md:tracking-widest uppercase italic">ADMIN</span>
+                         <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                           <div className="w-1 h-1 rounded-full bg-brand-cyan animate-pulse" />
+                           <span className="text-[7px] md:text-[9px] font-black text-brand-cyan tracking-wider uppercase italic drop-shadow-[0_0_5px_var(--theme-accent-1)]">Administrator Dashboard</span>
                          </div>
                        )}
                      </div>
-                     <div className="w-[1px] h-4 md:h-6 bg-white/10 mx-0.5 md:mx-1" />
-                     <button onClick={() => signOut(auth)} className="p-1 md:p-1.5 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-cyan transition-all" title="Terminate Session"><LogOut size={14} md:size={16} /></button>
+                     <div className="w-[1.5px] h-4 md:h-7 bg-white/10 mx-1 md:mx-2" />
+                     <button onClick={() => signOut(auth)} className="p-1.5 md:p-2 hover:bg-brand-cyan/10 rounded-lg text-brand-text-muted hover:text-brand-cyan transition-all group" title="Terminate Session">
+                       <LogOut size={14} className="md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+                     </button>
                    </>
                  ) : (
                    <>
