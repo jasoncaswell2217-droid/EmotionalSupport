@@ -1,6 +1,26 @@
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "" });
+const getApiKey = () => {
+  // Priority order for Vite-based injection
+  const key = 
+    import.meta.env.VITE_GEMINI_API_KEY || 
+    process.env.GEMINI_API_KEY || 
+    "";
+  
+  return key.trim();
+};
+
+const apiKey = getApiKey();
+
+if (typeof window !== 'undefined') {
+  if (!apiKey) {
+    console.error("PsycheLens AI: ❌ API Key is MISSING. Ensure GEMINI_API_KEY is set in GitHub Secrets.");
+  } else {
+    console.log("PsycheLens AI: ✅ API Key detected (Length: " + apiKey.length + ")");
+  }
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 const requestInformationTool: FunctionDeclaration = {
   name: "request_information",
