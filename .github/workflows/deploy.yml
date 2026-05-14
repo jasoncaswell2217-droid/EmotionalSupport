@@ -23,12 +23,14 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # If your build requires the API key
 
-      - name: Upload Production Files to Namecheap
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy Production Files via SSH
+        uses: appleboy/scp-action@master
         with:
-          server: ftp.buyerspotted.com # Or replace with your domain, e.g., example.com
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/
-          server-dir: /home/buyertju/psychelense/
+          host: yourdomain.com # Replace with your real domain
+          username: buyertju
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "./dist/*"
+          target: "./public_html/psychelense/"
+          strip_components: 1
+
           dangerous-clean-slate: false # Prevents it from wiping your main website files
