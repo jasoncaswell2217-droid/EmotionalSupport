@@ -772,7 +772,7 @@ export default function App() {
             {!isSidebarCollapsed && (
               <div className="flex flex-col">
                 <h1 className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
-                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.1-retry</span>
+                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.2-fix404</span>
               </div>
             )}
           </div>

@@ -186,7 +186,7 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
                     )} />
                     <span className="text-[10px] uppercase tracking-[0.2em] font-bold truncate flex items-center gap-2">
                       <span>{isUser ? "Observation Log Transmitted" : "Intelligence Engine Synchronized"}</span>
-                      {!isUser && <span className="opacity-30 font-mono text-[8px] tracking-normal lowercase">v1.2.1-retry</span>}
+                      {!isUser && <span className="opacity-30 font-mono text-[8px] tracking-normal lowercase">v1.2.2-fix404</span>}
                     </span>
                   </div>
                   {timestamp && (
