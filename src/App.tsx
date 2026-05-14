@@ -493,10 +493,30 @@ export default function App() {
         await new Promise(r => setTimeout(r, 600)); // Deliberate processing delay
       }
 
-      const response = await chatInstance.current.sendMessage({
-        message: parts
-      });
+      let response;
+      let retries = 0;
+      const maxRetries = 3;
       
+      while (retries < maxRetries) {
+        try {
+          response = await chatInstance.current.sendMessage({
+            message: parts
+          });
+          break; // Success!
+        } catch (err: any) {
+          retries++;
+          // If it's a 503 or 429, wait and retry
+          if ((err?.status === 503 || err?.status === 429 || err?.message?.includes('503') || err?.message?.includes('429')) && retries < maxRetries) {
+            console.warn(`PsycheLens AI: Server busy (503/429). Retrying attempt ${retries}...`);
+            await new Promise(r => setTimeout(r, 1500 * retries));
+            continue;
+          }
+          throw err; // Re-throw if other error or exhausted retries
+        }
+      }
+      
+      if (!response) throw new Error("Failed to get response after retries");
+
       const aiParts = response.candidates?.[0]?.content?.parts || [];
       const aiMsg: Message = { id: generateId(), role: 'model', parts: aiParts, timestamp: Date.now() };
       
@@ -752,7 +772,7 @@ export default function App() {
             {!isSidebarCollapsed && (
               <div className="flex flex-col">
                 <h1 className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
-                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.0-keys</span>
+                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.1-retry</span>
               </div>
             )}
           </div>

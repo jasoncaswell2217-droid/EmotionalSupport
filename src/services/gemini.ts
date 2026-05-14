@@ -93,7 +93,7 @@ export type Message = {
 
 export const startChat = (history: Message[] = []) => {
   return ai.chats.create({
-    model: "gemini-3-flash-preview",
+    model: "gemini-1.5-flash-latest",
     config: {
       systemInstruction: SYSTEM_PROMPT,
       temperature: 0.7,
