@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, LogIn, LogOut, Cloud, ImageIcon, MousePointer2 } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
+import { AuthLanding } from './components/AuthLanding';
 import { startChat, Message } from './services/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -29,6 +30,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'chat' | 'analytics'>('chat');
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
   const [sessions, setSessions] = useState<Record<string, Session>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isMigrating, setIsMigrating] = useState(false);
@@ -46,6 +48,11 @@ export default function App() {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsAuthLoading(false);
+      if (u) {
+        setShowLanding(false);
+      } else {
+        setShowLanding(true);
+      }
     });
   }, []);
 
@@ -706,6 +713,22 @@ export default function App() {
     }
   };
 
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen w-screen bg-black flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-brand-cyan border-t-transparent rounded-full shadow-[0_0_20px_var(--theme-accent-1)]"
+        />
+      </div>
+    );
+  }
+
+  if (!user && showLanding) {
+    return <AuthLanding onGuestMode={() => setShowLanding(false)} />;
+  }
+
   return (
     <div data-theme={theme} className="h-screen w-screen bg-bento-bg text-brand-text font-sans overflow-hidden flex selection:bg-brand-cyan/30 transition-colors duration-500">
       
@@ -717,34 +740,51 @@ export default function App() {
         
         <div className="flex flex-col gap-4 mt-8 flex-1">
           <button 
-            onClick={() => setCurrentView('chat')}
+            onClick={() => {
+              setCurrentView('chat');
+              setActiveMobileView('chat');
+            }}
             className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
               currentView === 'chat' ? "bg-brand-cyan/10 text-brand-cyan shadow-[0_0_15px_rgba(6,178,210,0.2)]" : "text-brand-text-muted hover:bg-brand-text-muted/5"
             )}
-            title="Chat"
+            title="Chat Engine"
           >
             <MessageSquare size={20} />
             {currentView === 'chat' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-cyan rounded-r-full" />}
           </button>
 
           <button 
-            onClick={() => setCurrentView('analytics')}
+            onClick={() => {
+              setCurrentView('analytics');
+              setActiveMobileView('analytics');
+            }}
             className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
               currentView === 'analytics' ? "bg-brand-purple/10 text-brand-purple shadow-[0_0_15px_rgba(139,92,246,0.2)]" : "text-brand-text-muted hover:bg-brand-text-muted/5"
             )}
-            title="Analytics"
+            title="Neural Diagnostics"
           >
             <BarChart3 size={20} />
             {currentView === 'analytics' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-purple rounded-r-full" />}
           </button>
+
+          {!user && (
+            <button 
+              onClick={() => setShowLanding(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-cyan transition-all group relative mt-4 border border-dashed border-white/10"
+              title="System Exit (Return to Matrix)"
+            >
+              <LogIn size={20} />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-brand-cyan rounded-full animate-pulse" />
+            </button>
+          )}
         </div>
 
         <button 
           onClick={() => setIsSettingsOpen(true)}
           className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-brand-text-muted/5 hover:text-brand-text transition-all group"
-          title="Settings"
+          title="System Configuration"
         >
           <Settings size={20} className="group-hover:rotate-45 transition-transform" />
         </button>
@@ -755,8 +795,8 @@ export default function App() {
         "border-r border-bento-border flex flex-col bg-bento-bg/30 backdrop-blur-sm shrink-0 z-40 transition-all duration-300",
         "fixed inset-y-0 left-16 md:relative md:left-0",
         currentView !== 'chat' && "w-0 p-0 overflow-hidden border-none border-0",
-        currentView === 'chat' && (isSidebarCollapsed ? "w-[0px] md:w-[0px] border-none overflow-hidden" : "w-[300px] border-r"),
-        activeMobileView === 'history' && currentView === 'chat' ? "translate-x-0 visible w-[300px]" : ""
+        currentView === 'chat' && (isSidebarCollapsed ? "w-[0px] md:w-[0px] border-none overflow-hidden" : "w-[340px] border-r"),
+        activeMobileView === 'history' && currentView === 'chat' ? "translate-x-0 visible w-[340px]" : ""
       )}>
         {/* Mobile Backdrop for Sidebar */}
         <div 
@@ -766,51 +806,52 @@ export default function App() {
           )}
           onClick={() => setActiveMobileView('chat')}
         />
-        <div className={cn("flex items-center mb-6", isSidebarCollapsed ? "justify-center" : "justify-between")}>
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-2.5 h-2.5 rounded-full bg-brand-cyan shadow-[0_0_10px_var(--theme-accent-1)] shrink-0" />
-            {!isSidebarCollapsed && (
-              <div className="flex flex-col">
-                <h1 className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
-                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.2-fix404</span>
-              </div>
-            )}
+        <div className="flex flex-col h-full p-6">
+          <div className={cn("flex items-center mb-10", isSidebarCollapsed ? "justify-center" : "justify-between")}>
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-3 h-3 rounded-full bg-brand-cyan shadow-[0_0_15px_var(--theme-accent-1)] shrink-0" />
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col">
+                  <h1 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
+                  <span className="text-[9px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.5-polish</span>
+                </div>
+              )}
+            </div>
+            
+            <button 
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className={cn(
+                "p-2 hover:bg-brand-text-muted/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan active:scale-95",
+                isSidebarCollapsed && "mt-2"
+              )}
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isSidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+            </button>
           </div>
-          
+
           <button 
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={createNewSession}
             className={cn(
-              "p-2 hover:bg-brand-text-muted/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan active:scale-95",
-              isSidebarCollapsed && "mt-2"
+              "flex items-center justify-center gap-3 bg-brand-cyan/10 hover:bg-brand-cyan/20 rounded-2xl transition-all border border-brand-cyan/20 group active:scale-[0.98] mb-10 overflow-hidden shrink-0",
+              isSidebarCollapsed ? "h-14 w-full" : "w-full py-4 px-6"
             )}
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            title="Start New Chat"
           >
-            {isSidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+            <Plus size={20} className="text-brand-cyan group-hover:scale-125 transition-transform" />
+            {!isSidebarCollapsed && <span className="text-sm font-bold text-brand-text tracking-tight">New Chat</span>}
           </button>
-        </div>
 
-        <button 
-          onClick={createNewSession}
-          className={cn(
-            "flex items-center justify-center gap-2 bg-brand-text-muted/5 hover:bg-brand-text-muted/10 rounded-xl transition-all border border-bento-border group active:scale-95 mb-6 overflow-hidden",
-            isSidebarCollapsed ? "h-12 w-full" : "w-full py-3"
-          )}
-          title="New Investigation"
-        >
-          <Plus size={18} className="text-brand-text-muted group-hover:text-brand-cyan transition-colors" />
-          {!isSidebarCollapsed && <span className="text-[13px] font-bold text-brand-text-muted group-hover:text-brand-text">New Sync</span>}
-        </button>
-
-        <div className={cn("flex flex-col gap-2 flex-1 overflow-hidden", isSidebarCollapsed && "hidden")}>
-          <div className={cn(
-            "text-[10px] uppercase tracking-[0.2em] text-brand-text-muted font-bold mb-2 flex items-center gap-2 opacity-60 overflow-hidden",
-            isSidebarCollapsed ? "justify-center" : "justify-start"
-          )}>
-            <History size={12} className="shrink-0" /> 
-            {!isSidebarCollapsed && <span className="whitespace-nowrap">Investigation Logs</span>}
-          </div>
+          <div className={cn("flex flex-col gap-3 flex-1 overflow-hidden", isSidebarCollapsed && "hidden")}>
+            <div className={cn(
+              "text-[10px] uppercase tracking-[0.25em] text-brand-text-muted font-black mb-4 flex items-center gap-2 opacity-50 px-2",
+              isSidebarCollapsed ? "justify-center" : "justify-start"
+            )}>
+              <History size={14} className="shrink-0" /> 
+              {!isSidebarCollapsed && <span className="whitespace-nowrap">Chat History</span>}
+            </div>
           
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
             <AnimatePresence mode='popLayout'>
               {isMigrating && (
                 <motion.div 
@@ -847,27 +888,27 @@ export default function App() {
                     setActiveMobileView('chat');
                   }}
                   className={cn(
-                    "group flex items-center gap-3 p-4 md:p-3 rounded-xl cursor-pointer transition-all border relative overflow-hidden",
+                    "group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border relative overflow-hidden",
                     currentSessionId === session.id 
-                      ? "bg-brand-cyan/10 border-brand-cyan/20 shadow-sm" 
+                      ? "bg-brand-cyan/10 border-brand-cyan/20 shadow-md" 
                       : "bg-transparent border-transparent hover:bg-brand-text-muted/5 hover:border-bento-border",
                     isSidebarCollapsed ? "justify-center" : "justify-start"
                   )}
                   title={isSidebarCollapsed ? session.title : undefined}
                 >
-                  <MessageSquare size={14} className={cn(
+                  <MessageSquare size={16} className={cn(
                     "shrink-0 transition-colors",
                     currentSessionId === session.id ? "text-brand-cyan" : "text-brand-text-muted/40"
                   )} />
                   {!isSidebarCollapsed && (
                     <div className="flex-1 min-w-0">
                       <div className={cn(
-                        "text-[13px] font-medium truncate transition-colors",
-                        currentSessionId === session.id ? "text-brand-text" : "text-brand-text-muted group-hover:text-brand-text font-light"
+                        "text-[14px] font-semibold truncate transition-colors mb-0.5",
+                        currentSessionId === session.id ? "text-brand-text" : "text-brand-text-muted group-hover:text-brand-text font-normal"
                       )}>
                         {session.title}
                       </div>
-                      <div className="text-[10px] text-brand-text-muted/30 font-mono">
+                      <div className="text-[11px] text-brand-text-muted/40 font-mono">
                         {new Date(session.createdAt).toLocaleDateString()}
                       </div>
                     </div>
@@ -878,15 +919,15 @@ export default function App() {
           </div>
         </div>
 
-        <div className="pt-4 border-t border-bento-border">
+        <div className="pt-6 border-t border-bento-border mt-6">
           <div className={cn(
-            "text-[10px] uppercase tracking-[0.2em] text-brand-text-muted font-bold mb-4 flex items-center gap-2 opacity-60 overflow-hidden",
+            "text-[10px] uppercase tracking-[0.25em] text-brand-text-muted font-black mb-6 flex items-center gap-2 opacity-50 px-2",
             isSidebarCollapsed ? "justify-center" : "justify-start"
           )}>
-            <Palette size={12} className="shrink-0" /> 
-            {!isSidebarCollapsed && <span className="whitespace-nowrap">Neural Skin</span>}
+            <Palette size={14} className="shrink-0" /> 
+            {!isSidebarCollapsed && <span className="whitespace-nowrap">UI Theme Selection</span>}
           </div>
-          <div className={cn("flex flex-wrap gap-2", isSidebarCollapsed ? "justify-center" : "justify-start")}>
+          <div className={cn("flex flex-wrap gap-3 px-1", isSidebarCollapsed ? "justify-center" : "justify-start")}>
             {THEMES.map((t) => (
               <button
                 key={t.id}
@@ -904,18 +945,19 @@ export default function App() {
           </div>
         </div>
 
-        <div className="pt-4 mt-auto border-t border-bento-border">
+        <div className="pt-6 mt-auto border-t border-bento-border">
           <button 
             onClick={() => setIsSettingsOpen(true)}
             className={cn(
-              "w-full flex items-center gap-3 p-4 md:p-3 rounded-xl transition-all text-brand-text-muted hover:text-brand-text hover:bg-brand-text-muted/5 group",
+              "w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-brand-text-muted hover:text-brand-text hover:bg-brand-text-muted/5 group",
               isSidebarCollapsed ? "justify-center" : "justify-start"
             )}
           >
-            <Settings size={18} className="shrink-0 group-hover:rotate-90 transition-transform duration-500" />
-            {!isSidebarCollapsed && <span className="text-[13px] font-bold">Settings</span>}
+            <Settings size={20} className="shrink-0 group-hover:rotate-90 transition-transform duration-500" />
+            {!isSidebarCollapsed && <span className="text-[14px] font-bold">Preferences</span>}
           </button>
         </div>
+      </div>
       </aside>
 
       {/* ANALYTICS VIEW */}
