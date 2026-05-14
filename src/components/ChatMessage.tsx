@@ -184,8 +184,9 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
                       "w-1.5 h-1.5 rounded-full",
                       isUser ? "bg-brand-text-muted/40" : "bg-brand-cyan"
                     )} />
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-bold truncate">
-                      {isUser ? "Observation Log Transmitted" : "Intelligence Engine Synchronized"}
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-bold truncate flex items-center gap-2">
+                      <span>{isUser ? "Observation Log Transmitted" : "Intelligence Engine Synchronized"}</span>
+                      {!isUser && <span className="opacity-30 font-mono text-[8px] tracking-normal lowercase">v1.2.0-keys</span>}
                     </span>
                   </div>
                   {timestamp && (

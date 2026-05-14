@@ -750,7 +750,10 @@ export default function App() {
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-2.5 h-2.5 rounded-full bg-brand-cyan shadow-[0_0_10px_var(--theme-accent-1)] shrink-0" />
             {!isSidebarCollapsed && (
-              <h1 className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
+              <div className="flex flex-col">
+                <h1 className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
+                <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.0-keys</span>
+              </div>
             )}
           </div>
           
