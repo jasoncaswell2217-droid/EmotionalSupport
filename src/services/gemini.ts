@@ -1,6 +1,6 @@
 import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || "" });
 
 const requestInformationTool: FunctionDeclaration = {
   name: "request_information",
@@ -79,7 +79,8 @@ export const startChat = (history: Message[] = []) => {
       temperature: 0.7,
       tools: [{ functionDeclarations: [requestInformationTool] }]
     },
-    history: history.length > 0 ? history : undefined,
+    // Map history to the format expected by the SDK
+    history: history.length > 0 ? history.map(({ role, parts }) => ({ role, parts })) : undefined,
   });
 };
 

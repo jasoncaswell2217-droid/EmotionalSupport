@@ -196,7 +196,7 @@ export default function App() {
               // Batch the messages
               const batch = writeBatch(db);
               session.messages.forEach(msg => {
-                const mRef = doc(messagesRef, msg.id || crypto.randomUUID());
+                const mRef = doc(messagesRef, msg.id || generateId());
                 batch.set(mRef, {
                   role: msg.role,
                   parts: msg.parts,
@@ -360,6 +360,14 @@ export default function App() {
     setShowFullHistory(false); // Reset history view on session switch
   }, [currentSessionId]);
 
+  const generateId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      return Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    }
+  };
+
   const updateCurrentSession = async (newMessages: Message[]) => {
     if (!user) {
       setSessions(prev => {
@@ -390,7 +398,7 @@ export default function App() {
     // Firestore update
     try {
       const lastMsg = newMessages[newMessages.length - 1];
-      const mId = lastMsg.id || crypto.randomUUID();
+      const mId = lastMsg.id || generateId();
       const mRef = doc(db, 'users', user.uid, 'sessions', currentSessionId, 'messages', mId);
       
       await setDoc(mRef, {
@@ -431,7 +439,7 @@ export default function App() {
       });
     }
 
-    const newUserMessage: Message = { id: crypto.randomUUID(), role: 'user', parts, timestamp: Date.now() };
+    const newUserMessage: Message = { id: generateId(), role: 'user', parts, timestamp: Date.now() };
     
     setActiveMobileView('chat');
     
@@ -490,7 +498,7 @@ export default function App() {
       });
       
       const aiParts = response.candidates?.[0]?.content?.parts || [];
-      const aiMsg: Message = { id: crypto.randomUUID(), role: 'model', parts: aiParts, timestamp: Date.now() };
+      const aiMsg: Message = { id: generateId(), role: 'model', parts: aiParts, timestamp: Date.now() };
       
       if (user) {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
@@ -506,7 +514,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Chat Error:", error);
-      const errorMsg: Message = { id: crypto.randomUUID(), role: 'model', parts: [{ text: "Error syncing with psychological database. Please retry analysis." }], timestamp: Date.now() };
+      const errorMsg: Message = { id: generateId(), role: 'model', parts: [{ text: "Error syncing with psychological database. Please retry analysis." }], timestamp: Date.now() };
       if (user) {
         await updateCurrentSession([...messages, newUserMessage, errorMsg]);
       } else {
@@ -542,7 +550,7 @@ export default function App() {
       }
     };
 
-    const newUserMessage: Message = { id: crypto.randomUUID(), role: 'user', parts: [toolResponsePart], timestamp: Date.now() };
+    const newUserMessage: Message = { id: generateId(), role: 'user', parts: [toolResponsePart], timestamp: Date.now() };
     
     if (user) {
       await updateCurrentSession([...messages, newUserMessage]);
@@ -571,7 +579,7 @@ export default function App() {
       });
       
       const aiParts = response.candidates?.[0]?.content?.parts || [];
-      const aiMsg: Message = { id: crypto.randomUUID(), role: 'model', parts: aiParts, timestamp: Date.now() };
+      const aiMsg: Message = { id: generateId(), role: 'model', parts: aiParts, timestamp: Date.now() };
       
       if (user) {
         await updateCurrentSession([...messages, newUserMessage, aiMsg]);
@@ -1599,7 +1607,7 @@ export default function App() {
                                       const batch = writeBatch(db);
                                       if (s.messages && Array.isArray(s.messages)) {
                                         s.messages.forEach(m => {
-                                          batch.set(doc(db, 'users', user.uid, 'sessions', id, 'messages', m.id || crypto.randomUUID()), {
+                                          batch.set(doc(db, 'users', user.uid, 'sessions', id, 'messages', m.id || generateId()), {
                                             role: m.role,
                                             parts: m.parts,
                                             timestamp: m.timestamp || Date.now()
