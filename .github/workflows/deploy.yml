@@ -28,5 +28,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: ./public_html/psychelense/
+          server-dir: ./
           dangerous-clean-slate: false
