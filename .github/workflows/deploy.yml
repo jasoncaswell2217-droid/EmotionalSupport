@@ -24,7 +24,7 @@ jobs:
       - name: Sync Production Build over FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: yourdomain.com # <-- Replace with your main site URL
+          server: ftp.buyerspotted.com # <-- Replace with your main site URL
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
