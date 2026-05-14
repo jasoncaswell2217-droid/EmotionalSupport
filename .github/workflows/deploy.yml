@@ -1,4 +1,4 @@
-name: Build and Deploy to Namecheap via SSH
+name: Build and Deploy to Namecheap
 on:
   push:
     branches:
@@ -21,13 +21,12 @@ jobs:
           npm install
           npm run build
 
-      - name: Deploy Production Files via SSH
-        uses: appleboy/scp-action@master
+      - name: Sync Production Build over FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: yourdomain.com # <-- REPLACE with your actual domain or shared server IP
-          username: buyertju
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 21098 # Namecheap's default shared hosting SSH port
-          source: "dist/*"
-          target: "public_html/psychelense/"
-          strip_components: 1
+          server: yourdomain.com # <-- Replace with your main site URL
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/psychelense/
+          dangerous-clean-slate: false
