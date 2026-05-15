@@ -68,6 +68,13 @@ service cloud.firestore {
         && data.timestamp is int;
     }
 
+    function isValidHowItWorks(data) {
+      return data.keys().hasAll(['title', 'content'])
+        && data.keys().size() == 2
+        && data.title is string && data.title.size() <= 256
+        && data.content is string && data.content.size() <= 10000;
+    }
+
     // --- Matches ---
     match /users/{userId} {
       // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
@@ -104,6 +111,11 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if isAdmin();
+    }
+
+    match /settings/how-it-works {
+      allow get: if true; // Public read
+      allow write: if isAdmin() && isValidHowItWorks(incoming());
     }
   }
 }

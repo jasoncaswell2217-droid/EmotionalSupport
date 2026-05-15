@@ -24,9 +24,10 @@ import { cn } from '../lib/utils';
 
 interface AuthLandingProps {
   onGuestMode?: () => void;
+  onShowHowItWorks?: () => void;
 }
 
-export function AuthLanding({ onGuestMode }: AuthLandingProps) {
+export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps) {
   const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -235,12 +236,22 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
                     </button>
                     
                     {onGuestMode && (
-                      <button 
-                        onClick={onGuestMode}
-                        className="text-[10px] text-brand-text-muted/60 hover:text-brand-cyan uppercase tracking-widest font-black transition-all"
-                      >
-                        Proceed as Guest (Local Sync Only)
-                      </button>
+                      <div className="flex flex-col gap-3">
+                        <button 
+                          onClick={onGuestMode}
+                          className="text-[10px] text-brand-text-muted/60 hover:text-brand-cyan uppercase tracking-widest font-black transition-all"
+                        >
+                          Proceed as Guest (Local Only)
+                        </button>
+                        {onShowHowItWorks && (
+                          <button 
+                            onClick={onShowHowItWorks}
+                            className="px-6 py-2 border border-white/10 rounded-xl text-[10px] text-brand-cyan uppercase tracking-widest font-black transition-all hover:bg-brand-cyan/5 hover:border-brand-cyan/30"
+                          >
+                            How It Works
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 

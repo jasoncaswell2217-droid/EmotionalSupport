@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, Sparkles } from 'lucide-react';
+import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
@@ -9,6 +9,7 @@ import { cn } from './lib/utils';
 import { auth, db, googleProvider, OperationType, handleFirestoreError } from './firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, writeBatch, Timestamp, serverTimestamp, increment } from 'firebase/firestore';
+import Markdown from 'react-markdown';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie } from 'recharts';
 
 const THEMES = [
@@ -27,9 +28,9 @@ interface Session {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'chat' | 'history' | 'analytics' | 'admin'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'history' | 'analytics' | 'admin' | 'how-it-works'>('chat');
   const [settingsTab, setSettingsTab] = useState<'general' | 'theme'>('general');
-  const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users'>('overview');
+  const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users' | 'content'>('overview');
   const [pricingType, setPricingType] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'user' | 'admin'>('user');
@@ -42,10 +43,59 @@ export default function App() {
   });
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const contentEditorRef = useRef<HTMLTextAreaElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const [howItWorksContent, setHowItWorksContent] = useState<{ title: string; content: string }>({
+    title: "Neural Synergy: How It Works",
+    content: "Our system uses advanced psychological archetypes to map your cognitive landscape. By analyzing behavioral patterns and semantic density, we generate a real-time diagnostic of your current mental state."
+  });
 
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+
+  const insertIntoContent = (prefix: string, suffix: string = '') => {
+    const textarea = contentEditorRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = howItWorksContent.content;
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const selection = text.substring(start, end);
+
+    const newContent = before + prefix + selection + suffix + after;
+    setHowItWorksContent(prev => ({ ...prev, content: newContent }));
+    
+    // Maintain focus and update selection
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + prefix.length + selection.length + suffix.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  // Sync How It Works Content
+  useEffect(() => {
+    const docRef = doc(db, 'settings', 'how-it-works');
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        setHowItWorksContent(snap.data() as { title: string; content: string });
+      }
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        console.error("How It Works sync error:", error);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Global Stats Sync (Only for Admins to see details)
   useEffect(() => {
@@ -827,8 +877,8 @@ export default function App() {
     );
   }
 
-  if (!user && showLanding) {
-    return <AuthLanding onGuestMode={() => setShowLanding(false)} />;
+  if (!user && showLanding && currentView !== 'how-it-works') {
+    return <AuthLanding onGuestMode={() => setShowLanding(false)} onShowHowItWorks={() => setCurrentView('how-it-works')} />;
   }
 
   return (
@@ -837,7 +887,7 @@ export default function App() {
       {/* GLOBAL TOP NAVIGATION */}
       {/* GLOBAL TOP NAVIGATION */}
       <header className="h-16 border-b border-bento-border bg-bento-bg z-50 shrink-0 px-4 md:px-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-lg shadow-brand-cyan/20 shrink-0">
             <Brain size={22} className="text-white" />
           </div>
@@ -848,57 +898,70 @@ export default function App() {
         </div>
 
         {/* VIEW SWITCHER */}
-        <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 mx-2 md:mx-4">
-          <button 
-            onClick={() => {
-              setCurrentView('chat');
-            }}
-            className={cn(
-              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-            )}
-          >
-            <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
-          </button>
-          <button 
-            onClick={() => {
-              setCurrentView('history');
-            }}
-            className={cn(
-              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-            )}
-          >
-            <History size={14} /> <span className="hidden sm:inline">Chats</span>
-          </button>
-          <button 
-            onClick={() => {
-              setCurrentView('analytics');
-            }}
-            className={cn(
-              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-            )}
-          >
-            <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
-          </button>
-          
-          {role === 'admin' && (
+        <div className="flex-1 flex items-center justify-center mx-2 md:mx-4 overflow-hidden">
+          <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
             <button 
               onClick={() => {
-                setCurrentView('admin');
+                setCurrentView('chat');
               }}
               className={cn(
-                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                currentView === 'admin' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
               )}
             >
-              <Shield size={14} /> <span className="hidden sm:inline">Admin</span>
+              <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
             </button>
-          )}
+            <button 
+              onClick={() => {
+                setCurrentView('history');
+              }}
+              className={cn(
+                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+              )}
+            >
+              <History size={14} /> <span className="hidden sm:inline">Chats</span>
+            </button>
+            <button 
+              onClick={() => {
+                setCurrentView('analytics');
+              }}
+              className={cn(
+                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+              )}
+            >
+              <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
+            </button>
+            <button 
+              onClick={() => {
+                setCurrentView('how-it-works');
+              }}
+              className={cn(
+                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                currentView === 'how-it-works' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+              )}
+            >
+              <BookOpen size={14} /> <span className="hidden lg:inline">How It Works</span>
+            </button>
+            
+            {role === 'admin' && (
+              <button 
+                onClick={() => {
+                  setCurrentView('admin');
+                }}
+                className={cn(
+                  "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                  currentView === 'admin' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                )}
+              >
+                <Shield size={14} /> <span className="hidden sm:inline">Admin</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0 px-2">
           {/* CONTEXTUAL CHAT TOOLS */}
           {currentView === 'chat' && (
             <div className="flex items-center gap-2 border-r border-white/5 pr-2 md:pr-4 mr-1">
@@ -939,8 +1002,13 @@ export default function App() {
                  {role === 'admin' && <span className="text-[7px] text-brand-cyan font-black uppercase italic">Administrator</span>}
                </div>
                <div className="w-[1px] h-4 bg-white/10" />
-               <button onClick={() => signOut(auth)} className="p-1 hover:text-brand-cyan transition-colors" title="Sign Out">
-                 <LogOut size={14} />
+               <button 
+                 onClick={() => signOut(auth)} 
+                 className="px-3 py-1.5 flex items-center gap-2 hover:text-brand-cyan transition-colors bg-white/5 border border-white/10 rounded-xl group" 
+                 title="Secure System Exit"
+               >
+                 <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Exit</span>
                </button>
             </div>
           ) : (
@@ -948,7 +1016,7 @@ export default function App() {
               onClick={() => signInWithPopup(auth, googleProvider)}
               className="px-4 py-2 bg-brand-cyan text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-cyan/80 transition-all flex items-center gap-2"
             >
-              <LogIn size={14} /> Sync
+              <LogIn size={14} /> Login
             </button>
           )}
 
@@ -1009,6 +1077,15 @@ export default function App() {
                   )}
                 >
                   <Users size={14} /> Users
+                </button>
+                <button 
+                  onClick={() => setAdminSubView('content')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    adminSubView === 'content' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <BookOpen size={14} /> Content
                 </button>
               </div>
             </header>
@@ -1266,9 +1343,39 @@ export default function App() {
                 </div>
 
                 {pricingType === 'subscriptions' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Free Tier */}
+                    <div className="bento-card p-6 space-y-6 bg-black/20 border-white/5 relative overflow-hidden group">
+                      <div className="absolute top-4 right-4 px-2 py-1 bg-white/5 border border-white/10 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingDown size={10} className="text-brand-text-muted opacity-40" />
+                        <span className="text-[9px] font-black text-brand-text-muted/40 uppercase tracking-tighter">Basal Layer</span>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted/30 italic">Pre-Activation</h4>
+                        <h3 className="text-2xl font-display font-black text-brand-text italic">Neural Baseline</h3>
+                      </div>
+                      <div className="text-4xl font-display font-black text-brand-text">FREE</div>
+                      <ul className="space-y-3">
+                        {['5 Analytical Responses / mo', 'Standard AI Logic', 'Basic Pattern Recognition', '24hr History Retention'].map(f => (
+                          <li key={f} className="flex items-center gap-2 text-[10px] font-medium text-brand-text-muted/50">
+                            <Check size={10} className="text-brand-text-muted/30" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="pt-2">
+                         <button className="w-full py-3 rounded-lg border border-white/5 text-[9px] font-black uppercase tracking-widest text-brand-text-muted/30 cursor-not-allowed">
+                          Current Baseline
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Basic Tier */}
                     <div className="bento-card p-8 space-y-8 bg-black/40 border-white/5 relative overflow-hidden group">
+                      <div className="absolute -top-6 -right-6 w-24 h-24 bg-brand-cyan/5 rounded-full blur-2xl group-hover:bg-brand-cyan/10 transition-all" />
+                      <div className="absolute top-4 right-4 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $3.15 (35%)</span>
+                      </div>
                       <div className="space-y-2">
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">Personal Use</h4>
                         <h3 className="text-3xl font-display font-black text-brand-text italic">Basic Explorer</h3>
@@ -1290,6 +1397,10 @@ export default function App() {
 
                     {/* Pro Tier */}
                     <div className="bento-card p-8 space-y-8 bg-gradient-to-b from-brand-purple/10 to-transparent border-brand-purple/30 relative overflow-hidden group shadow-2xl shadow-brand-purple/10">
+                      <div className="absolute top-4 right-12 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $12.48 (52%)</span>
+                      </div>
                       <div className="absolute top-0 right-0 p-4">
                         <Sparkles className="text-brand-purple" size={24} />
                       </div>
@@ -1314,6 +1425,10 @@ export default function App() {
 
                     {/* Elite Tier */}
                     <div className="bento-card p-8 space-y-8 bg-black/40 border-brand-cyan/20 relative overflow-hidden group">
+                      <div className="absolute top-4 right-4 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $33.32 (68%)</span>
+                      </div>
                        <div className="space-y-2">
                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-cyan">Max Capability</h4>
                          <h3 className="text-3xl font-display font-black text-brand-text italic">Elite Matrix</h3>
@@ -1337,6 +1452,10 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Tiny Pack */}
                     <div className="bento-card p-8 space-y-8 bg-black/40 border-white/5 relative overflow-hidden group">
+                      <div className="absolute top-4 right-4 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $1.00 (20%)</span>
+                      </div>
                       <div className="space-y-2">
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">Pay-As-You-Go</h4>
                         <h3 className="text-3xl font-display font-black text-brand-text italic">Starter Pack</h3>
@@ -1355,6 +1474,10 @@ export default function App() {
 
                     {/* Mid Pack */}
                     <div className="bento-card p-8 space-y-8 bg-brand-cyan/5 border-brand-cyan/20 relative overflow-hidden group">
+                      <div className="absolute top-4 right-4 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $5.04 (42%)</span>
+                      </div>
                       <div className="space-y-2">
                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-cyan">Best Value</h4>
                          <h3 className="text-3xl font-display font-black text-brand-text italic">Power Pack</h3>
@@ -1373,6 +1496,10 @@ export default function App() {
 
                     {/* Bulk Pack */}
                     <div className="bento-card p-8 space-y-8 bg-black/40 border-brand-purple/20 relative overflow-hidden group">
+                       <div className="absolute top-4 right-4 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">Profit: $22.75 (65%)</span>
+                      </div>
                        <div className="space-y-2">
                          <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-purple">Volume Discount</h4>
                          <h3 className="text-3xl font-display font-black text-brand-text italic">Bulk Data</h3>
@@ -1410,6 +1537,86 @@ export default function App() {
                        <div className="text-3xl font-display font-black text-brand-text">35%</div>
                     </div>
                    </div>
+                </div>
+              </motion.div>
+            ) : adminSubView === 'content' ? (
+              /* CONTENT MANAGEMENT */
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-12"
+              >
+                <div className="max-w-4xl space-y-8">
+                  <div className="space-y-2">
+                     <h2 className="text-3xl font-display font-black text-brand-text italic uppercase">How It Works <span className="text-brand-purple">Editor</span></h2>
+                     <p className="text-brand-text-muted text-sm font-light">Global settings for the public-facing 'How It Works' documentation.</p>
+                  </div>
+
+                  <div className="bento-card p-8 border-white/5 space-y-6">
+                    <div className="space-y-4">
+                      <label className="text-[10px] uppercase tracking-widest font-black text-brand-text-muted opacity-50">Page Title</label>
+                      <input 
+                        type="text"
+                        value={howItWorksContent.title}
+                        onChange={(e) => setHowItWorksContent(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-brand-text focus:border-brand-purple/50 outline-none transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] uppercase tracking-widest font-black text-brand-text-muted opacity-50">Content Body</label>
+                      <div className="w-full bg-black/40 border border-white/5 rounded-2xl overflow-hidden focus-within:border-brand-purple/50 transition-all">
+                        <div className="flex flex-wrap items-center gap-1 p-2 bg-white/5 border-b border-white/5">
+                          <button onClick={() => insertIntoContent('**', '**')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Bold"><Bold size={16} /></button>
+                          <button onClick={() => insertIntoContent('_', '_')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Italic"><Italic size={16} /></button>
+                          <button onClick={() => insertIntoContent('\n- ')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Bullet List"><List size={16} /></button>
+                          <div className="w-px h-4 bg-white/10 mx-1" />
+                          <button onClick={() => insertIntoContent('![Image Description](', ')')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Insert Image"><ImageIcon size={16} /></button>
+                          <div className="w-px h-4 bg-white/10 mx-1" />
+                          {['🧠', '✨', '🔬', '🛡️', '⚡', '📊'].map(emoji => (
+                            <button 
+                              key={emoji} 
+                              onClick={() => insertIntoContent(emoji)} 
+                              className="p-2 hover:bg-white/10 rounded-lg text-lg hover:scale-110 transition-all"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <textarea 
+                          ref={contentEditorRef}
+                          rows={12}
+                          value={howItWorksContent.content}
+                          onChange={(e) => setHowItWorksContent(prev => ({ ...prev, content: e.target.value }))}
+                          className="w-full bg-transparent p-4 text-brand-text outline-none resize-none font-sans leading-relaxed min-h-[300px]"
+                          placeholder="Compose your documentation using Markdown..."
+                        />
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={async () => {
+                        const docRef = doc(db, 'settings', 'how-it-works');
+                        await setDoc(docRef, howItWorksContent, { merge: true });
+                        showToast('Uplink Successful: Content updated globally.');
+                      }}
+                      className="px-8 py-3 bg-brand-purple text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-purple/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Push Changes to Cloud
+                    </button>
+                  </div>
+
+                  <div className="p-6 bg-brand-purple/5 rounded-3xl border border-brand-purple/20 flex gap-4 items-start">
+                    <div className="p-2 bg-brand-purple/10 rounded-lg text-brand-purple shrink-0">
+                      <Sparkles size={20} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-brand-text">Content Sanitization Active</h4>
+                      <p className="text-xs text-brand-text-muted leading-relaxed opacity-60 italic">
+                        Changes take effect immediately for all users. Ensure information remains within behavioral synthesis guidelines.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ) : (
@@ -1847,9 +2054,9 @@ export default function App() {
         {/* MESSAGES */}
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 md:px-0"
+          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 md:px-0 scroll-smooth"
         >
-          <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-24">
+          <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-32">
             {hasHiddenMessages && (
               <div className="flex justify-center pb-8 sticky top-0 z-10">
                 <button 
@@ -1872,7 +2079,7 @@ export default function App() {
                   <div className="absolute -inset-8 md:-inset-12 bg-brand-cyan/10 blur-[60px] md:blur-[100px] rounded-full animate-pulse" />
                   <Brain className="w-16 h-16 md:w-24 md:h-24 text-brand-cyan relative z-10 drop-shadow-[0_0_20px_rgba(6,178,210,0.4)]" />
                 </motion.div>
-                <h2 className="text-2xl md:text-4xl font-display font-medium text-brand-text mb-4 tracking-tighter">Initiate Synchronization</h2>
+                <h2 className="text-2xl md:text-4xl font-display font-medium text-brand-text mb-4 tracking-tighter">Initialize Intelligence</h2>
                 <p className="text-brand-text-muted max-w-sm leading-relaxed font-light text-base md:text-xl opacity-60">Feed the array with behavioral variables to generate a diagnostic.</p>
               </div>
             ) : (
@@ -1997,14 +2204,110 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-3 md:p-8 pb-4 md:pb-8 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
-          <div className="w-full max-w-6xl mx-auto">
+        <div className="p-3 md:p-8 pb-10 md:pb-12 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent relative mt-auto">
+          <div className="w-full max-w-6xl mx-auto mb-[env(safe-area-inset-bottom)]">
             <PsychInput onSend={handleSendMessage} onMoodUpdate={setCurrentMood} disabled={isLoading} />
           </div>
         </div>
       </main>
     )}
-      </div>
+
+    {/* HOW IT WORKS VIEW */}
+    {currentView === 'how-it-works' && (
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
+        <div className="max-w-4xl mx-auto w-full space-y-12 pb-24">
+            <header className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-brand-purple/20 border border-brand-purple/40 flex items-center justify-center shadow-lg shadow-brand-purple/10">
+                <BookOpen size={32} className="text-brand-purple" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+                  System <span className="text-brand-purple">Manual</span>
+                </h1>
+                <p className="text-brand-text-muted text-[10px] md:text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+                  Operation Protocols
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {role === 'admin' && (
+                <button 
+                  onClick={() => {
+                    setAdminSubView('content');
+                    setCurrentView('admin');
+                  }}
+                  className="px-4 py-2 bg-brand-purple/10 border border-brand-purple/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-brand-purple hover:bg-brand-purple/20 transition-all flex items-center gap-2"
+                >
+                  <BookOpen size={16} /> Edit Content
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  if (user) {
+                    setCurrentView('chat');
+                  } else {
+                    setCurrentView('chat'); // This will trigger the landing check
+                    setShowLanding(true);
+                  }
+                }}
+                className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-brand-text-muted hover:text-brand-text transition-all flex items-center gap-2"
+              >
+                <ChevronLeft size={16} /> Back to Entry
+              </button>
+            </div>
+          </header>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bento-card p-8 md:p-12 border-brand-purple/20 bg-brand-purple/5 relative"
+          >
+            <div className="absolute top-0 right-0 p-12 opacity-5">
+              <Brain size={300} />
+            </div>
+            
+            <h2 className="text-3xl md:text-5xl font-display font-black text-brand-text mb-8 tracking-tight">
+              {howItWorksContent.title}
+            </h2>
+            
+            <div className="prose prose-invert max-w-none">
+              <div className="markdown-body">
+                <Markdown>
+                  {howItWorksContent.content}
+                </Markdown>
+              </div>
+            </div>
+
+            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 space-y-3">
+                <div className="w-10 h-10 rounded-lg bg-brand-cyan/20 flex items-center justify-center text-brand-cyan mb-2">
+                  <Activity size={20} />
+                </div>
+                <h3 className="text-sm font-bold text-brand-text uppercase tracking-widest">Signal Capture</h3>
+                <p className="text-xs text-brand-text-muted leading-relaxed">System intercepts raw emotional data via semantic analysis.</p>
+              </div>
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 space-y-3">
+                <div className="w-10 h-10 rounded-lg bg-brand-purple/20 flex items-center justify-center text-brand-purple mb-2">
+                  <Database size={20} />
+                </div>
+                <h3 className="text-sm font-bold text-brand-text uppercase tracking-widest">Matrix Mapping</h3>
+                <p className="text-xs text-brand-text-muted leading-relaxed">Behavioral variables are mapped onto cognitive archetypes.</p>
+              </div>
+              <div className="p-6 bg-black/40 rounded-2xl border border-white/5 space-y-3">
+                <div className="w-10 h-10 rounded-lg bg-brand-cyan/20 flex items-center justify-center text-brand-cyan mb-2">
+                  <Brain size={20} />
+                </div>
+                <h3 className="text-sm font-bold text-brand-text uppercase tracking-widest">Synthesis</h3>
+                <p className="text-xs text-brand-text-muted leading-relaxed">Generates real-time behavioral insights and diagnostics.</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+    )}
+  </div>
 
       {/* MODAL OVERLAY - SETTINGS */}
       <AnimatePresence>
@@ -2303,6 +2606,32 @@ export default function App() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]"
+          >
+            <div className={cn(
+              "px-6 py-4 rounded-2xl border shadow-2xl flex items-center gap-4 backdrop-blur-xl",
+              toast.type === 'success' ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400" :
+              toast.type === 'error' ? "bg-rose-500/10 border-rose-500/50 text-rose-400" :
+              "bg-brand-cyan/10 border-brand-cyan/50 text-brand-cyan"
+            )}>
+              {toast.type === 'success' && <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center"><Check size={14} /></div>}
+              {toast.type === 'error' && <div className="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center"><X size={14} /></div>}
+              {toast.type === 'info' && <div className="w-6 h-6 rounded-full bg-brand-cyan/20 flex items-center justify-center"><Brain size={14} /></div>}
+              <span className="text-[11px] font-black uppercase tracking-widest leading-none">
+                {toast.message}
+              </span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -36,9 +36,23 @@
         "timestamp": { "type": "number" }
       },
       "required": ["role", "parts", "timestamp"]
+    },
+    "HowItWorks": {
+      "title": "HowItWorks",
+      "description": "The content for the 'How It Works' documentation page.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["title", "content"]
     }
   },
   "firestore": {
+    "/settings/how-it-works": {
+      "schema": "HowItWorks",
+      "description": "Global settings for the public-facing 'How It Works' documentation."
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User profile and settings."
