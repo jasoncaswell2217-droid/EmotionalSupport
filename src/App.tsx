@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile, Heading1, ListOrdered, Minus } from 'lucide-react';
+import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, UserPlus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile, Heading1, ListOrdered, Minus } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
@@ -32,7 +32,7 @@ interface Session {
 export default function App() {
   const [currentView, setCurrentView] = useState<'chat' | 'history' | 'analytics' | 'admin' | 'how-it-works'>('chat');
   const [settingsTab, setSettingsTab] = useState<'general' | 'theme'>('general');
-  const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users' | 'content'>('overview');
+  const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users' | 'content' | 'system'>('overview');
   const [pricingType, setPricingType] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'user' | 'admin'>('user');
@@ -56,6 +56,11 @@ export default function App() {
   const [howItWorksContent, setHowItWorksContent] = useState<{ title: string; content: string }>({
     title: "Neural Synergy: How It Works",
     content: "Our system uses advanced psychological archetypes to map your cognitive landscape. By analyzing behavioral patterns and semantic density, we generate a real-time diagnostic of your current mental state."
+  });
+
+  const [systemSettings, setSystemSettings] = useState<{ registrationEnabled: boolean; registrationDisabledMessage: string }>({
+    registrationEnabled: true,
+    registrationDisabledMessage: "Registration Disabled By The Admins"
   });
 
   const [user, setUser] = useState<User | null>(null);
@@ -94,6 +99,21 @@ export default function App() {
     }, (error) => {
       if (!error.message.includes('permission-denied')) {
         console.error("How It Works sync error:", error);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Global System Settings
+  useEffect(() => {
+    const docRef = doc(db, 'settings', 'global');
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        setSystemSettings(snap.data() as any);
+      }
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        console.error("Global Settings sync error:", error);
       }
     });
     return () => unsubscribe();
@@ -880,7 +900,12 @@ export default function App() {
   }
 
   if (!user && showLanding && currentView !== 'how-it-works') {
-    return <AuthLanding onGuestMode={() => setShowLanding(false)} onShowHowItWorks={() => setCurrentView('how-it-works')} />;
+    return <AuthLanding 
+      onGuestMode={() => setShowLanding(false)} 
+      onShowHowItWorks={() => setCurrentView('how-it-works')} 
+      registrationEnabled={systemSettings.registrationEnabled}
+      registrationDisabledMessage={systemSettings.registrationDisabledMessage}
+    />;
   }
 
   return (
@@ -1094,6 +1119,15 @@ export default function App() {
                   )}
                 >
                   <BookOpen size={14} /> Content
+                </button>
+                <button 
+                  onClick={() => setAdminSubView('system')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    adminSubView === 'system' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <Settings size={14} /> System
                 </button>
               </div>
             </header>
@@ -1630,6 +1664,90 @@ export default function App() {
                       <h4 className="text-sm font-bold text-brand-text">Content Sanitization Active</h4>
                       <p className="text-xs text-brand-text-muted leading-relaxed opacity-60 italic">
                         Changes take effect immediately for all users. Ensure information remains within behavioral synthesis guidelines.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : adminSubView === 'system' ? (
+              /* SYSTEM CONFIGURATION */
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-12"
+              >
+                <div className="max-w-2xl space-y-8">
+                  <div className="space-y-2">
+                     <h2 className="text-3xl font-display font-black text-brand-text italic uppercase">System <span className="text-brand-cyan">Matrix Controls</span></h2>
+                     <p className="text-brand-text-muted text-sm font-light">Global security overrides and network-level configurations.</p>
+                  </div>
+
+                  <div className="bento-card p-8 border-white/5 space-y-8">
+                    <div className="flex items-center justify-between p-6 bg-black/40 rounded-3xl border border-white/5 group hover:bg-white/10 transition-all">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <UserPlus size={18} className="text-brand-cyan" />
+                          <h4 className="text-base font-bold text-brand-text">New Subject Registration</h4>
+                        </div>
+                        <p className="text-xs text-brand-text-muted font-medium opacity-60">Allow new identities to bridge with the neural network.</p>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          const newStatus = !systemSettings.registrationEnabled;
+                          try {
+                            await setDoc(doc(db, 'settings', 'global'), { 
+                              ...systemSettings, 
+                              registrationEnabled: newStatus 
+                            });
+                            showToast(`Registration ${newStatus ? 'Access Granted' : 'Access Restricted'}`, 'success');
+                          } catch (err) {
+                            showToast("Failed to modulate system state", "error");
+                          }
+                        }}
+                        className={cn(
+                          "w-16 h-9 rounded-full p-1.5 transition-all relative overflow-hidden",
+                          systemSettings.registrationEnabled ? "bg-brand-cyan shadow-[0_0_20px_var(--theme-accent-1)]" : "bg-white/10"
+                        )}
+                      >
+                        <motion.div 
+                          animate={{ x: systemSettings.registrationEnabled ? 28 : 0 }}
+                          className="w-6 h-6 bg-white rounded-full shadow-xl z-10 relative"
+                        />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                         <MessageSquare size={14} className="text-brand-cyan" />
+                         <label className="text-[10px] uppercase tracking-widest font-black text-brand-text-muted opacity-50">Restricted Access Payload Message</label>
+                      </div>
+                      <input 
+                        type="text"
+                        value={systemSettings.registrationDisabledMessage}
+                        onChange={(e) => setSystemSettings(prev => ({ ...prev, registrationDisabledMessage: e.target.value }))}
+                        onBlur={async () => {
+                           try {
+                            await setDoc(doc(db, 'settings', 'global'), systemSettings);
+                            showToast("System message persistent", "success");
+                          } catch (err) {
+                            showToast("Failed to update message payload", "error");
+                          }
+                        }}
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-sm text-brand-text focus:border-brand-cyan/50 outline-none transition-all placeholder:opacity-20 font-mono"
+                        placeholder="Registration Disabled By The Admins"
+                      />
+                      <p className="text-[10px] text-brand-text-muted italic opacity-40 leading-relaxed">
+                        "If registration is disabled, this message will be delivered to any entity attempting to create a new profile."
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 bg-brand-cyan/5 border border-brand-cyan/10 rounded-3xl flex items-start gap-4">
+                    <Shield size={20} className="text-brand-cyan mt-1 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-brand-cyan mb-1">Administrative Protocol</h4>
+                      <p className="text-[11px] text-brand-text-muted leading-relaxed">
+                        Disabling registration will prevent new users from joining the system. Existing users with valid credentials will maintain their current uplink status.
                       </p>
                     </div>
                   </div>

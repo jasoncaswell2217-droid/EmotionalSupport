@@ -46,9 +46,22 @@
         "content": { "type": "string" }
       },
       "required": ["title", "content"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global application settings restricted to admins.",
+      "type": "object",
+      "properties": {
+        "registrationEnabled": { "type": "boolean" },
+        "registrationDisabledMessage": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/settings/global": {
+      "schema": "SystemSettings",
+      "description": "Global application settings."
+    },
     "/settings/how-it-works": {
       "schema": "HowItWorks",
       "description": "Global settings for the public-facing 'How It Works' documentation."

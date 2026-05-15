@@ -75,6 +75,13 @@ service cloud.firestore {
         && data.content is string && data.content.size() <= 10000;
     }
 
+    function isValidSystemSettings(data) {
+      return data.keys().hasAll(['registrationEnabled', 'registrationDisabledMessage'])
+        && data.keys().size() == 2
+        && data.registrationEnabled is bool
+        && data.registrationDisabledMessage is string && data.registrationDisabledMessage.size() <= 1000;
+    }
+
     // --- Matches ---
     match /users/{userId} {
       // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
@@ -116,6 +123,11 @@ service cloud.firestore {
     match /settings/how-it-works {
       allow get: if true; // Public read
       allow write: if isAdmin() && isValidHowItWorks(incoming());
+    }
+
+    match /settings/global {
+      allow get: if true; // Public read
+      allow write: if isAdmin() && isValidSystemSettings(incoming());
     }
   }
 }

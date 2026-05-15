@@ -4,7 +4,9 @@ import {
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  getAdditionalUserInfo,
+  deleteUser
 } from 'firebase/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -25,9 +27,16 @@ import { cn } from '../lib/utils';
 interface AuthLandingProps {
   onGuestMode?: () => void;
   onShowHowItWorks?: () => void;
+  registrationEnabled?: boolean;
+  registrationDisabledMessage?: string;
 }
 
-export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps) {
+export function AuthLanding({ 
+  onGuestMode, 
+  onShowHowItWorks, 
+  registrationEnabled = true, 
+  registrationDisabledMessage = "Registration Disabled By The Admins" 
+}: AuthLandingProps) {
   const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +47,17 @@ export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps)
     setIsLoading(true);
     setError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const additionalInfo = getAdditionalUserInfo(result);
+      
+      if (additionalInfo?.isNewUser && !registrationEnabled) {
+        // Registration is disabled, and this is a new user
+        if (result.user) {
+          await deleteUser(result.user);
+        }
+        setError(registrationDisabledMessage);
+        setIsLoading(false);
+      }
     } catch (err: any) {
       setError(err.message);
       setIsLoading(false);
@@ -167,6 +186,36 @@ export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps)
                     </p>
                   </div>
 
+                  {/* System Message Section */}
+                  {(!registrationEnabled || registrationEnabled) && (
+                    <div className={cn(
+                      "p-4 rounded-2xl flex items-start gap-4 transition-all duration-500",
+                      !registrationEnabled ? "bg-orange-500/10 border border-orange-500/20" : "bg-brand-cyan/5 border border-brand-cyan/10"
+                    )}>
+                      {!registrationEnabled ? (
+                         <ShieldAlert size={20} className="text-orange-500 shrink-0 mt-0.5" />
+                      ) : (
+                         <div className="w-5 h-5 rounded-full border-2 border-brand-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="w-1.5 h-1.5 bg-brand-cyan rounded-full animate-pulse" />
+                         </div>
+                      )}
+                      <div className="space-y-1">
+                        <span className={cn(
+                          "text-[9px] font-black uppercase tracking-widest",
+                          !registrationEnabled ? "text-orange-500" : "text-brand-cyan"
+                        )}>
+                          {registrationEnabled ? 'Uplink Status: Active' : 'Uplink Status: Restricted'}
+                        </span>
+                        <p className={cn(
+                          "text-xs leading-relaxed italic",
+                          !registrationEnabled ? "text-brand-text" : "text-brand-text-muted opacity-60"
+                        )}>
+                          "{registrationDisabledMessage}"
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <form onSubmit={handleEmailAuth} className="space-y-4">
                     <div className="space-y-4">
                       <div className="relative group">
@@ -202,8 +251,8 @@ export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps)
 
                     <button 
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-brand-cyan text-black font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-cyan/80 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-brand-cyan/10"
+                      disabled={isLoading || (mode === 'register' && !registrationEnabled)}
+                      className="w-full bg-brand-cyan text-black font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-cyan/80 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:grayscale disabled:pointer-events-none shadow-lg shadow-brand-cyan/10"
                     >
                       {isLoading ? (
                         <Loader2 className="animate-spin" size={18} />
@@ -257,8 +306,18 @@ export function AuthLanding({ onGuestMode, onShowHowItWorks }: AuthLandingProps)
 
                   <div className="flex flex-col items-center gap-3 pt-2">
                     <button 
-                      onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                      className="text-xs text-brand-text-muted hover:text-brand-text transition-all flex items-center gap-2"
+                      onClick={() => {
+                        if (!registrationEnabled && mode === 'login') {
+                          // Prevent switching to register if disabled
+                          return;
+                        }
+                        setMode(mode === 'login' ? 'register' : 'login');
+                      }}
+                      disabled={mode === 'login' && !registrationEnabled}
+                      className={cn(
+                        "text-xs transition-all flex items-center gap-2",
+                        mode === 'login' && !registrationEnabled ? "text-brand-text-muted/20 cursor-not-allowed" : "text-brand-text-muted hover:text-brand-text"
+                      )}
                     >
                       {mode === 'login' ? <UserPlus size={14} /> : <LogIn size={14} />}
                       <span>{mode === 'login' ? "Don't have an account? Register" : "Already registered? Identity Login"}</span>
