@@ -92,7 +92,7 @@
 
 @layer base {
   body {
-    @apply bg-bento-bg text-brand-text antialiased overflow-hidden transition-colors duration-500 selection:bg-brand-cyan selection:text-bento-bg;
+    @apply bg-bento-bg text-brand-text antialiased overflow-x-hidden transition-colors duration-500 selection:bg-brand-cyan selection:text-bento-bg;
     background-image: radial-gradient(var(--theme-border) 1.5px, transparent 1.5px);
     background-size: 32px 32px;
   }

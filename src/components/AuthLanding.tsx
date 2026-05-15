@@ -65,7 +65,7 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-black text-brand-text flex flex-col items-center justify-start lg:justify-center relative overflow-y-auto overflow-x-hidden font-sans custom-scrollbar">
+    <div className="min-h-[100dvh] w-full bg-black text-brand-text flex flex-col items-center justify-start lg:justify-center relative overflow-y-auto overflow-x-hidden font-sans custom-scrollbar selection:bg-brand-cyan/30">
       {/* Dynamic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-brand-cyan/10 blur-[150px] animate-pulse" />
@@ -86,7 +86,7 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
             </div>
             <div>
               <h1 className="text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
-                PsycheAI <span className="text-brand-cyan">Engine</span>
+                My Psych <span className="text-brand-cyan">Lens</span>
               </h1>
               <p className="text-brand-text-muted text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
                 Advanced Analytical Matrix v1.2
@@ -95,22 +95,25 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-3xl md:text-4xl font-display font-medium text-brand-text leading-tight">
-              Decode the <span className="text-brand-cyan">unconscious</span> with surgical precision.
+            <h2 className="text-4xl md:text-6xl font-display font-medium text-brand-text leading-[1.1] tracking-tighter italic">
+              Understand the <br /> <span className="text-brand-cyan">unseen paths</span> of thought.
             </h2>
-            <p className="text-brand-text-muted text-lg font-light leading-relaxed max-w-lg">
-              PsycheAI provides a secure environment for deep psychological investigation, emotional mapping, and behavioural pattern synthesis.
+            <p className="text-brand-text-muted text-xl font-light leading-relaxed max-w-xl">
+              My Psych Lens is the world's most advanced analytical mirror. Harness state-of-the-art AI to decode deep behavioral signals, map cognitive breakthroughs, and achieve ultimate psychological synthesis.
             </p>
           </div>
 
-          {/* Disclaimer Card */}
-          <div className="bg-brand-purple/5 border border-brand-purple/20 p-6 rounded-3xl space-y-4 backdrop-blur-md">
-            <div className="flex items-center gap-3 text-brand-purple">
-              <ShieldAlert size={20} />
-              <span className="text-[11px] font-black uppercase tracking-[0.2em]">Service Protocol Disclaimer</span>
+          {/* Multi-Purpose Disclaimer Card */}
+          <div className="bg-brand-cyan/5 border border-brand-cyan/10 p-6 rounded-3xl space-y-4 backdrop-blur-md relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ShieldAlert size={40} className="text-brand-cyan" />
             </div>
-            <p className="text-xs text-brand-text-muted leading-relaxed italic opacity-80">
-              <strong className="text-brand-text">IMPORTANT NOTE:</strong> This service <span className="text-brand-text">DOES NOT</span> constitute a formal clinical diagnosis or medical advice. Insights provided are for educational and research purposes only. PsycheAI is not a licensed psychological entity; it functions as an emotional support and analytical simulation framework.
+            <div className="flex items-center gap-3 text-brand-cyan">
+              <ShieldAlert size={20} />
+              <span className="text-[11px] font-black uppercase tracking-[0.2em]">Research & Safety Protocol</span>
+            </div>
+            <p className="text-sm text-brand-text-muted leading-relaxed font-light">
+              We empower discovery. Please note that My Psych Lens is an <span className="text-brand-text">educational simulation framework</span>. It is designed to assist in pattern analysis and should not be used as a substitute for professional medical or psychiatric consultation.
             </p>
           </div>
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, LogIn, LogOut, Cloud, ImageIcon, MousePointer2 } from 'lucide-react';
+import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, Sparkles } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
@@ -28,6 +28,8 @@ interface Session {
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'chat' | 'analytics' | 'admin'>('chat');
+  const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users'>('overview');
+  const [pricingType, setPricingType] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'user' | 'admin'>('user');
   const [preferences, setPreferences] = useState(() => {
@@ -336,7 +338,11 @@ export default function App() {
         setDoc(userRef, {
           preferences,
           theme,
-          role: isAdminEmail ? 'admin' : 'user'
+          role: isAdminEmail ? 'admin' : 'user',
+          email: user.email,
+          totalMessages: 0,
+          createdAt: serverTimestamp(),
+          lastActive: serverTimestamp()
         }, { merge: true }).catch(err => {
           console.error("Failed to initialize user doc:", err);
         });
@@ -601,7 +607,7 @@ export default function App() {
           retries++;
           // If it's a 503 or 429, wait and retry
           if ((err?.status === 503 || err?.status === 429 || err?.message?.includes('503') || err?.message?.includes('429')) && retries < maxRetries) {
-            console.warn(`PsycheLens AI: Server busy (503/429). Retrying attempt ${retries}...`);
+            console.warn(`My Psych Lens: Server busy (503/429). Retrying attempt ${retries}...`);
             await new Promise(r => setTimeout(r, 1500 * retries));
             continue;
           }
@@ -619,6 +625,9 @@ export default function App() {
         // Increment global message count
         const statsRef = doc(db, 'stats', 'global');
         setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
+        // Increment per-user usage
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, { totalMessages: increment(1), lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -703,6 +712,9 @@ export default function App() {
         // Increment global message count 
         const statsRef = doc(db, 'stats', 'global');
         setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
+        // Increment per-user usage
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, { totalMessages: increment(1), lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -872,7 +884,7 @@ export default function App() {
                 "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
                 currentView === 'admin' ? "bg-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_rgba(6,178,210,0.4)] ring-1 ring-brand-cyan/50" : "text-brand-text-muted hover:bg-brand-cyan/5 hover:text-brand-cyan"
               )}
-              title="Administrator Matrix"
+              title="Admin Dashboard"
             >
               <Shield size={20} />
               {currentView === 'admin' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-cyan rounded-r-full shadow-[0_0_10px_var(--theme-accent-1)]" />}
@@ -884,7 +896,7 @@ export default function App() {
             <button 
               onClick={() => setShowLanding(true)}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-cyan transition-all group relative mt-4 border border-dashed border-white/10"
-              title="System Exit (Return to Matrix)"
+              title="Return to Welcome Screen"
             >
               <LogIn size={20} />
               <div className="absolute -top-1 -right-1 w-2 h-2 bg-brand-cyan rounded-full animate-pulse" />
@@ -903,168 +915,571 @@ export default function App() {
 
       {/* ADMIN VIEW */}
       {currentView === 'admin' && role === 'admin' && (
-        <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-6 md:p-12 overflow-y-auto custom-scrollbar">
-          <div className="max-w-7xl mx-auto w-full space-y-12 pb-24">
-            <header className="flex flex-col gap-4">
+        <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
+          <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
-                  <Shield size={36} className="text-brand-cyan" />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
+                  <Shield size={32} className="text-brand-cyan" />
                 </div>
                 <div>
-                  <h1 className="text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
-                    Administrator <span className="text-brand-cyan">Matrix</span>
+                  <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+                    Admin <span className="text-brand-cyan">Control Center</span>
                   </h1>
-                  <p className="text-brand-text-muted text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
-                    Neural Network Governance v1.2.6
+                  <p className="text-brand-text-muted text-[10px] md:text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+                    Neural Network Governance v1.2.8
                   </p>
                 </div>
               </div>
+
+              <div className="flex bg-black/40 p-1 rounded-2xl border border-white/5 self-start">
+                <button 
+                  onClick={() => setAdminSubView('overview')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    adminSubView === 'overview' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <Activity size={14} /> Overview
+                </button>
+                <button 
+                  onClick={() => setAdminSubView('monetization')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    adminSubView === 'monetization' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <CreditCard size={14} /> Monetization
+                </button>
+                <button 
+                  onClick={() => setAdminSubView('users')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    adminSubView === 'users' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <Users size={14} /> Users
+                </button>
+              </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Quota Section */}
-              <div className="lg:col-span-2 space-y-8">
-                <div className="bento-card p-10 bg-gradient-to-br from-brand-cyan/10 via-transparent to-transparent border-brand-cyan/20">
-                   <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-3">
-                      <BarChart3 className="text-brand-cyan" size={24} />
-                      <h3 className="text-2xl font-display font-bold text-brand-text">Neural Quota Monitor</h3>
+            {adminSubView === 'overview' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Quota Section */}
+                <div className="lg:col-span-2 space-y-8">
+                  <div className="bento-card p-6 md:p-10 bg-gradient-to-br from-brand-cyan/10 via-transparent to-transparent border-brand-cyan/20">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="text-brand-cyan" size={24} />
+                        <h3 className="text-xl md:text-2xl font-display font-bold text-brand-text">Usage & Quota Tracker</h3>
+                      </div>
+                      <div className="px-3 py-1 bg-brand-cyan/10 rounded-full text-[10px] font-mono text-brand-cyan border border-brand-cyan/20 animate-pulse">
+                        REAL-TIME SYNC
+                      </div>
                     </div>
-                    <div className="px-3 py-1 bg-brand-cyan/10 rounded-full text-[10px] font-mono text-brand-cyan border border-brand-cyan/20 animate-pulse">
-                      REAL-TIME SYNC
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Global AI Messages</span>
+                            <Activity size={16} className="text-brand-cyan opacity-50" />
+                          </div>
+                          <div className="text-4xl md:text-5xl font-display font-black text-brand-text italic">
+                            {globalStats?.totalMessages || 0}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
+                              <span>Monthly Limit</span>
+                              <span>{Math.round(((globalStats?.totalMessages || 0) / 10000) * 100)}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(100, ((globalStats?.totalMessages || 0) / 10000) * 100)}%` }}
+                                className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                            Aggregated message count across all users. Standard tier limit is 10k messages.
+                          </p>
+                        </div>
+
+                        <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Total Registered Users</span>
+                            <Users size={16} className="text-brand-purple opacity-50" />
+                          </div>
+                          <div className="text-4xl md:text-5xl font-display font-black text-brand-text italic">
+                            {allUsers.length}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
+                              <span>Capacity</span>
+                              <span>{Math.round((allUsers.length / 50) * 100)}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min(100, (allUsers.length / 50) * 100)}%` }}
+                                className="h-full bg-brand-purple shadow-[0_0_8px_var(--theme-accent-2)]" 
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                            Total number of unique user accounts. System capacity currently supports 50 users.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-brand-cyan/5 rounded-[2rem] border border-brand-cyan/10 p-8 flex flex-col justify-between">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                            <Cloud className="text-brand-cyan" size={18} />
+                            <h4 className="text-sm font-black uppercase tracking-widest text-brand-text">Usage Tracking Note</h4>
+                          </div>
+                          <p className="text-xs text-brand-text-muted leading-relaxed italic">
+                            "Since the Gemini AI Engine runs via your Google Cloud instance, you should monitor the **Google Cloud Console** for the most precise token-level analytics."
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-3 mt-8">
+                          <a 
+                            href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-4 bg-brand-cyan text-black text-center font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-cyan/80 transition-all shadow-lg shadow-brand-cyan/20"
+                          >
+                            Google Cloud Console <ChevronDown size={16} className="-rotate-90" />
+                          </a>
+                          <a 
+                            href="https://console.firebase.google.com/project/_/firestore/usage"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-brand-text-muted text-center font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
+                          >
+                            Firestore Usage Statistics
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Total Invocations</span>
-                          <Activity size={16} className="text-brand-cyan opacity-50" />
-                        </div>
-                        <div className="text-5xl font-display font-black text-brand-text italic">
-                          {globalStats?.totalMessages || 0}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
-                            <span>Limit Threshold</span>
-                            <span>{Math.round(((globalStats?.totalMessages || 0) / 10000) * 100)}%</span>
-                          </div>
-                          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.min(100, ((globalStats?.totalMessages || 0) / 10000) * 100)}%` }}
-                              className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
-                            />
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
-                          Aggregated message count across the entire subject pool. Threshold set at 10k messages for standard tier.
-                        </p>
-                      </div>
-
-                      <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Subject Pool Density</span>
-                          <Users size={16} className="text-brand-purple opacity-50" />
-                        </div>
-                        <div className="text-5xl font-display font-black text-brand-text italic">
-                          {allUsers.length}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-brand-text-muted">
-                            <span>Matrix Capacity</span>
-                            <span>{Math.round((allUsers.length / 50) * 100)}%</span>
-                          </div>
-                          <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.min(100, (allUsers.length / 50) * 100)}%` }}
-                              className="h-full bg-brand-purple shadow-[0_0_8px_var(--theme-accent-2)]" 
-                            />
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
-                          Total unique identities registered. Current matrix capacity calibrated for 50 distinct subjects.
-                        </p>
-                      </div>
+                  <div className="bento-card p-6 md:p-10 border-white/5 space-y-8">
+                    <div className="flex items-center gap-3">
+                      <Users className="text-brand-purple" size={24} />
+                      <h3 className="text-xl md:text-2xl font-display font-bold text-brand-text">User Directory</h3>
                     </div>
-
-                    <div className="bg-brand-cyan/5 rounded-[2rem] border border-brand-cyan/10 p-8 flex flex-col justify-between">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Cloud className="text-brand-cyan" size={18} />
-                          <h4 className="text-sm font-black uppercase tracking-widest text-brand-text">Usage Tracking Note</h4>
-                        </div>
-                        <p className="text-xs text-brand-text-muted leading-relaxed italic">
-                          "Since the Gemini AI Engine runs via your Google Cloud instance, you should monitor the **Google Cloud Console** for the most precise token-level analytics."
-                        </p>
-                      </div>
-                      
-                      <div className="space-y-3 mt-8">
-                        <a 
-                          href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-4 bg-brand-cyan text-black text-center font-black uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-cyan/80 transition-all shadow-lg shadow-brand-cyan/20"
-                        >
-                          Google Cloud Console <ChevronDown size={16} className="-rotate-90" />
-                        </a>
-                        <a 
-                          href="https://console.firebase.google.com/project/_/firestore/usage"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-brand-text-muted text-center font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all"
-                        >
-                          Firestore Usage Statistics
-                        </a>
-                      </div>
+                    
+                    <div className="overflow-x-auto no-scrollbar">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-white/10 text-[10px] uppercase font-black tracking-widest text-brand-text-muted">
+                            <th className="pb-4 pl-2">User Email</th>
+                            <th className="pb-4">Access Level</th>
+                            <th className="pb-4 hidden lg:table-cell">Account ID</th>
+                            <th className="pb-4 pr-2 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {allUsers.map((u: any) => (
+                            <tr key={u.id} className="group hover:bg-white/5 transition-colors">
+                              <td className="py-4 pl-2 font-mono text-xs text-brand-text">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-brand-purple/20 flex items-center justify-center border border-brand-purple/20">
+                                    <Users size={14} className="text-brand-purple" />
+                                  </div>
+                                  <span>{u.id === user?.uid ? `${u.role === 'admin' ? 'SYSTEM ADM' : 'YOU'}` : (u.email || u.id.substring(0, 12))}</span>
+                                </div>
+                              </td>
+                              <td className="py-4 font-mono text-[10px]">
+                                <span className={cn(
+                                  "px-2.5 py-1 rounded-full border font-black uppercase tracking-tighter",
+                                  u.role === 'admin' ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan" : "bg-white/5 border-white/10 text-brand-text-muted"
+                                )}>
+                                  {u.role || 'user'}
+                                </span>
+                              </td>
+                              <td className="py-4 font-mono text-[10px] text-brand-text-muted opacity-40 hidden lg:table-cell">
+                                {u.id}
+                              </td>
+                              <td className="py-4 pr-2 text-right">
+                                <button className="p-2 hover:bg-white/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan">
+                                  <ChevronDown size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
 
-                <div className="bento-card p-10 border-white/5 space-y-8">
-                  <div className="flex items-center gap-3">
-                    <Users className="text-brand-purple" size={24} />
-                    <h3 className="text-2xl font-display font-bold text-brand-text">Personnel Directory</h3>
+                {/* System Logs / Alerts */}
+                <div className="space-y-8">
+                  <div className="bento-card p-8 border-brand-cyan/10 space-y-6">
+                    <div className="flex items-center gap-2 text-brand-cyan">
+                      <Activity size={18} />
+                      <h4 className="text-xs font-black uppercase tracking-[0.2em]">System Activity Logs</h4>
+                    </div>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                      {[
+                        { time: '14:21:05', log: 'Admin elevation detected for ' + (user?.email || 'subject'), type: 'security' },
+                        { time: '14:18:32', log: 'Global entropy sync complete.', type: 'sys' },
+                        { time: '14:15:10', log: 'New subject entry created: subjects/matrix_v1', type: 'user' },
+                        { time: '14:12:44', log: 'Neural diagnostic cycle success: 94.8% accuracy', type: 'info' }
+                      ].map((log, i) => (
+                        <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-2">
+                          <div className="flex justify-between items-center text-[8px] font-mono opacity-30 uppercase">
+                            <span>{log.time}</span>
+                            <span className="text-brand-cyan">{log.type}</span>
+                          </div>
+                          <p className="text-[10px] font-mono leading-relaxed text-brand-text-muted">{log.log}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+
+                  <div className="bento-card p-8 border-brand-purple/10 bg-brand-purple/5 space-y-4">
+                    <div className="flex items-center gap-2 text-brand-purple">
+                      <Lock size={18} />
+                      <h4 className="text-xs font-black uppercase tracking-[0.2em]">Encryption Tier</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-brand-text">
+                        <span>Neural Cipher</span>
+                        <span className="text-brand-purple">Active</span>
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full w-[85%] bg-brand-purple shadow-[0_0_10px_var(--theme-accent-2)]" />
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-brand-text-muted leading-relaxed italic opacity-60">
+                      "RSA-4096 and AES-256-GCM protocols are currently securing all subject-AI transmissions."
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : adminSubView === 'monetization' ? (
+              /* MONETIZATION VIEW */
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-12"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  <div className="space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-purple/10 rounded-full border border-brand-purple/20 text-[10px] font-black text-brand-purple uppercase tracking-widest">
+                      <TrendingUp size={12} /> Strategic Monetization
+                    </div>
+                    <h2 className="text-4xl md:text-6xl font-display font-black text-brand-text leading-none italic">
+                      Revenue <br /> <span className="text-brand-purple">Architecture</span>
+                    </h2>
+                    <p className="text-brand-text-muted text-lg max-w-xl leading-relaxed">
+                      To scale the platform while maintaining performance, we've designed a simple pricing structure with tiered subscriptions and credit packs.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="bg-black/40 p-1.5 rounded-2xl border border-white/5 flex w-fit">
+                      <button 
+                        onClick={() => setPricingType('subscriptions')}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          pricingType === 'subscriptions' ? "bg-white text-black shadow-lg" : "text-brand-text-muted hover:text-brand-text"
+                        )}
+                      >
+                        Subscriptions
+                      </button>
+                      <button 
+                        onClick={() => setPricingType('credits')}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          pricingType === 'credits' ? "bg-white text-black shadow-lg" : "text-brand-text-muted hover:text-brand-text"
+                        )}
+                      >
+                        Credit Packs
+                      </button>
+                    </div>
+                    <div className="p-6 bento-card border-brand-purple/20 bg-brand-purple/5">
+                      <div className="flex items-center gap-2 mb-2 text-brand-purple">
+                        <Sparkles size={16} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Hybrid Value Proposition</span>
+                      </div>
+                      <p className="text-[11px] text-brand-text-muted italic leading-relaxed">
+                        "Subscriptions provide stable MRR core funding, while credits capture sporadic high-intensity waves of usage without long-term friction."
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {pricingType === 'subscriptions' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Basic Tier */}
+                    <div className="bento-card p-8 space-y-8 bg-black/40 border-white/5 relative overflow-hidden group">
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">Personal Use</h4>
+                        <h3 className="text-3xl font-display font-black text-brand-text italic">Basic Explorer</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$9 <span className="text-sm font-sans font-normal text-brand-text-muted uppercase">/mo</span></div>
+                      <ul className="space-y-4">
+                        {['500 AI Responses/mo', 'Standard AI Sync', 'Global Archetype Library', 'Standard Analytics'].map(f => (
+                          <li key={f} className="flex items-center gap-3 text-[11px] font-medium text-brand-text-muted">
+                            <Check size={12} className="text-brand-cyan" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest text-brand-text-muted hover:border-brand-cyan transition-colors">
+                          Activate Tier
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Pro Tier */}
+                    <div className="bento-card p-8 space-y-8 bg-gradient-to-b from-brand-purple/10 to-transparent border-brand-purple/30 relative overflow-hidden group shadow-2xl shadow-brand-purple/10">
+                      <div className="absolute top-0 right-0 p-4">
+                        <Sparkles className="text-brand-purple" size={24} />
+                      </div>
+                      <div className="space-y-2">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-purple">Recommended</h4>
+                         <h3 className="text-3xl font-display font-black text-brand-text italic">Professional</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$24 <span className="text-sm font-sans font-normal text-brand-text-muted uppercase">/mo</span></div>
+                      <ul className="space-y-4">
+                        {['2,500 AI Responses/mo', 'Deep-Link Pattern Analysis', 'Priority System Access', 'Advanced Admin Control', 'Custom Neural Themes'].map(f => (
+                          <li key={f} className="flex items-center gap-3 text-[11px] font-medium text-brand-text">
+                            <Check size={12} className="text-brand-purple" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl bg-brand-purple text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-purple/20 hover:scale-[1.02] transition-transform active:scale-95">
+                          Upgrade Node
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Elite Tier */}
+                    <div className="bento-card p-8 space-y-8 bg-black/40 border-brand-cyan/20 relative overflow-hidden group">
+                       <div className="space-y-2">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-cyan">Max Capability</h4>
+                         <h3 className="text-3xl font-display font-black text-brand-text italic">Elite Matrix</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$49 <span className="text-sm font-sans font-normal text-brand-text-muted uppercase">/mo</span></div>
+                      <ul className="space-y-4">
+                        {['Unlimited AI Responses', 'Dedicated Compute Instance', 'Private Model Training', 'Early Feature Access', '24/7 Priority Support'].map(f => (
+                          <li key={f} className="flex items-center gap-3 text-[11px] font-medium text-brand-text-muted">
+                            <Check size={12} className="text-brand-cyan" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:bg-brand-cyan transition-colors active:scale-95">
+                          Initialize Elite
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Tiny Pack */}
+                    <div className="bento-card p-8 space-y-8 bg-black/40 border-white/5 relative overflow-hidden group">
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text-muted">Pay-As-You-Go</h4>
+                        <h3 className="text-3xl font-display font-black text-brand-text italic">Starter Pack</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$5</div>
+                      <div className="text-sm font-mono text-brand-cyan">250 AI Responses</div>
+                      <p className="text-[11px] text-brand-text-muted leading-relaxed">
+                        Perfect for casual users who want to try out deep-link archetypes without committing to a monthly fee.
+                      </p>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest text-brand-text-muted hover:border-brand-cyan transition-colors">
+                          Purchase Sync
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mid Pack */}
+                    <div className="bento-card p-8 space-y-8 bg-brand-cyan/5 border-brand-cyan/20 relative overflow-hidden group">
+                      <div className="space-y-2">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-cyan">Best Value</h4>
+                         <h3 className="text-3xl font-display font-black text-brand-text italic">Power Pack</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$12</div>
+                      <div className="text-sm font-mono text-brand-cyan">1,000 AI Responses</div>
+                      <p className="text-[11px] text-brand-text-muted leading-relaxed">
+                        The "sweet spot" for active users. Credits never expire and can be used anytime for intensive sessions.
+                      </p>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl bg-brand-cyan text-black text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand-cyan/20 hover:scale-[1.02] transition-transform active:scale-95">
+                          Load Credits
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bulk Pack */}
+                    <div className="bento-card p-8 space-y-8 bg-black/40 border-brand-purple/20 relative overflow-hidden group">
+                       <div className="space-y-2">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-purple">Volume Discount</h4>
+                         <h3 className="text-3xl font-display font-black text-brand-text italic">Bulk Data</h3>
+                      </div>
+                      <div className="text-5xl font-display font-black text-brand-text">$35</div>
+                      <div className="text-sm font-mono text-brand-purple">5,000 AI Responses</div>
+                      <p className="text-[11px] text-brand-text-muted leading-relaxed">
+                        Optimized for research projects. Provides the lowest per-invocation cost on the entire platform.
+                      </p>
+                      <div className="pt-4">
+                         <button className="w-full py-4 rounded-xl bg-brand-purple text-white text-[10px] font-black uppercase tracking-widest hover:bg-brand-purple/80 transition-colors active:scale-95">
+                          Confirm Bulk
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bento-card p-10 border-white/5 bg-black/20">
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+                    <div className="space-y-2">
+                       <div className="text-xs font-black uppercase tracking-[0.3em] text-brand-text-muted opacity-40">Monthly Active Revenue</div>
+                       <div className="text-3xl font-display font-black text-brand-text text-emerald-400">Stable</div>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="text-xs font-black uppercase tracking-[0.3em] text-brand-text-muted opacity-40">Credit Break-Even</div>
+                       <div className="text-3xl font-display font-black text-brand-text text-rose-400">Elastic</div>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="text-xs font-black uppercase tracking-[0.3em] text-brand-text-muted opacity-40">Churn Protection</div>
+                       <div className="text-3xl font-display font-black text-brand-text">High</div>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="text-xs font-black uppercase tracking-[0.3em] text-brand-text-muted opacity-40">Network Margin</div>
+                       <div className="text-3xl font-display font-black text-brand-text">35%</div>
+                    </div>
+                   </div>
+                </div>
+              </motion.div>
+            ) : (
+              /* USERS SECTION */
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bento-card p-6 border-brand-cyan/20 bg-brand-cyan/5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Users className="text-brand-cyan" size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Active Users</span>
+                    </div>
+                    <div className="text-4xl font-display font-black text-brand-text italic">
+                      {allUsers.length}
+                    </div>
+                  </div>
+                  <div className="bento-card p-6 border-white/5 bg-black/40">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Activity className="text-brand-purple" size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Frequent Users</span>
+                    </div>
+                    <div className="text-4xl font-display font-black text-brand-text italic">
+                      {allUsers.filter((u: any) => (u.totalMessages || 0) > 50).length}
+                    </div>
+                  </div>
+                  <div className="bento-card p-6 border-white/5 bg-black/40">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Shield className="text-brand-cyan" size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Administrators</span>
+                    </div>
+                    <div className="text-4xl font-display font-black text-brand-text italic">
+                      {allUsers.filter((u: any) => u.role === 'admin').length}
+                    </div>
+                  </div>
+                  <div className="bento-card p-6 border-white/5 bg-black/40">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Database className="text-brand-purple" size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand-text">Data Usage</span>
+                    </div>
+                    <div className="text-4xl font-display font-black text-brand-text italic">
+                      {(globalStats?.totalMessages || 0) * 1.2}MB
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bento-card p-8 border-white/5">
+                  <div className="flex items-center justify-between mb-8">
+                     <h3 className="text-xl font-display font-bold text-brand-text">Global User Management</h3>
+                     <div className="flex gap-2">
+                       <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
+                         Sort by Activity
+                       </div>
+                       <div className="px-4 py-2 bg-brand-cyan/10 rounded-xl border border-brand-cyan/20 text-[10px] font-black uppercase tracking-widest text-brand-cyan">
+                         Export Report
+                       </div>
+                     </div>
+                  </div>
+
+                  <div className="overflow-x-auto no-scrollbar">
+                    <table className="w-full text-left border-separate border-spacing-y-2">
                       <thead>
-                        <tr className="border-b border-white/10 text-[10px] uppercase font-black tracking-widest text-brand-text-muted">
-                          <th className="pb-4 pl-2">Subject Email</th>
-                          <th className="pb-4">Access Tier</th>
-                          <th className="pb-4">Identification Hash</th>
-                          <th className="pb-4 pr-2 text-right">Action</th>
+                        <tr className="text-[10px] uppercase font-black tracking-widest text-brand-text-muted opacity-40">
+                          <th className="pb-4 pl-4">User Account</th>
+                          <th className="pb-4">Permission Level</th>
+                          <th className="pb-4">AI Messages</th>
+                          <th className="pb-4">Last Activity</th>
+                          <th className="pb-4 pr-4 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody>
                         {allUsers.map((u: any) => (
-                          <tr key={u.id} className="group hover:bg-white/5 transition-colors">
-                            <td className="py-4 pl-2 font-mono text-xs text-brand-text">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-brand-purple/20 flex items-center justify-center border border-brand-purple/20">
-                                  <LogIn size={14} className="text-brand-purple" />
+                          <tr key={u.id} className="group hover:bg-white/5 transition-all bg-black/20 rounded-2xl">
+                            <td className="py-4 pl-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center">
+                                  <Users size={18} className="text-brand-cyan" />
                                 </div>
-                                <span>{u.id === user?.uid ? `${u.role === 'admin' ? 'SYSTEM ADM' : 'YOU'}` : (u.email || u.id.substring(0, 12))}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-brand-text">{u.email || 'Guest User'}</span>
+                                  <span className="text-[9px] font-mono text-brand-text-muted opacity-40 uppercase tracking-tighter">{u.id}</span>
+                                </div>
                               </div>
                             </td>
-                            <td className="py-4 font-mono text-[10px]">
+                            <td className="py-4">
                               <span className={cn(
-                                "px-2.5 py-1 rounded-full border font-black uppercase tracking-tighter",
-                                u.role === 'admin' ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan" : "bg-white/5 border-white/10 text-brand-text-muted"
+                                "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                                u.role === 'admin' ? "bg-brand-cyan/10 border-brand-cyan/40 text-brand-cyan" : "bg-white/5 border-white/10 text-brand-text-muted"
                               )}>
-                                {u.role || 'user'}
+                                {u.role === 'admin' ? 'Administrator' : 'Standard User'}
                               </span>
                             </td>
-                            <td className="py-4 font-mono text-[10px] text-brand-text-muted opacity-40">
-                              {u.id}
+                            <td className="py-4">
+                               <div className="flex flex-col gap-1.5">
+                                 <div className="flex justify-between items-center w-32 pr-4">
+                                   <span className="text-xs font-mono font-black text-brand-text">{u.totalMessages || 0}</span>
+                                   <span className="text-[8px] font-black text-brand-text-muted opacity-40 uppercase">Msgs</span>
+                                 </div>
+                                 <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
+                                   <div 
+                                     className={cn("h-full", (u.totalMessages || 0) > 100 ? "bg-brand-purple" : "bg-brand-cyan")} 
+                                     style={{ width: `${Math.min(100, (u.totalMessages || 0))}%` }}
+                                   />
+                                 </div>
+                               </div>
                             </td>
-                            <td className="py-4 pr-2 text-right">
-                              <button className="p-2 hover:bg-white/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan">
-                                <ChevronDown size={14} />
-                              </button>
+                            <td className="py-4 text-[10px] font-mono text-brand-text-muted">
+                              {u.lastActive?.seconds ? new Date(u.lastActive.seconds * 1000).toLocaleString() : 'Never'}
+                            </td>
+                            <td className="py-4 pr-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button title="View User History" className="p-2 hover:bg-brand-cyan/10 rounded-xl transition-all text-brand-text-muted hover:text-brand-cyan group-hover:translate-x-[-2px]">
+                                  <History size={16} />
+                                </button>
+                                <button title="Permanently Remove User" className="p-2 hover:bg-rose-500/10 rounded-xl transition-all text-brand-text-muted hover:text-rose-500">
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1072,53 +1487,45 @@ export default function App() {
                     </table>
                   </div>
                 </div>
-              </div>
 
-              {/* System Logs / Alerts */}
-              <div className="space-y-8">
-                 <div className="bento-card p-8 border-brand-cyan/10 space-y-6">
-                  <div className="flex items-center gap-2 text-brand-cyan">
-                    <Activity size={18} />
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em]">Neural Logs</h4>
-                  </div>
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                    {[
-                      { time: '14:21:05', log: 'Admin elevation detected for ' + (user?.email || 'subject'), type: 'security' },
-                      { time: '14:18:32', log: 'Global entropy sync complete.', type: 'sys' },
-                      { time: '14:15:10', log: 'New subject entry created: subjects/matrix_v1', type: 'user' },
-                      { time: '14:12:44', log: 'Neural diagnostic cycle success: 94.8% accuracy', type: 'info' }
-                    ].map((log, i) => (
-                      <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/5 space-y-2">
-                        <div className="flex justify-between items-center text-[8px] font-mono opacity-30 uppercase">
-                          <span>{log.time}</span>
-                          <span className="text-brand-cyan">{log.type}</span>
-                        </div>
-                        <p className="text-[10px] font-mono leading-relaxed text-brand-text-muted">{log.log}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bento-card p-8 border-brand-purple/10 bg-brand-purple/5 space-y-4">
-                  <div className="flex items-center gap-2 text-brand-purple">
-                    <Lock size={18} />
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em]">Encryption Tier</h4>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-brand-text">
-                      <span>Neural Cipher</span>
-                      <span className="text-brand-purple">Active</span>
-                    </div>
-                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full w-[85%] bg-brand-purple shadow-[0_0_10px_var(--theme-accent-2)]" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bento-card p-8 border-white/5 space-y-6">
+                    <h3 className="text-lg font-display font-bold text-brand-text">Live Activity Monitoring</h3>
+                    <div className="space-y-4">
+                       {allUsers.slice(0, 3).map((u: any, i: number) => (
+                         <div key={i} className="p-4 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              <span className="text-xs font-bold text-brand-text">{u.email?.split('@')[0] || 'User'}</span>
+                            </div>
+                            <div className="text-[10px] font-mono text-brand-text-muted italic">
+                              Active AI Session...
+                            </div>
+                         </div>
+                       ))}
                     </div>
                   </div>
-                  <p className="text-[9px] text-brand-text-muted leading-relaxed italic opacity-60">
-                    "RSA-4096 and AES-256-GCM protocols are currently securing all subject-AI transmissions."
-                  </p>
+                  <div className="bento-card p-8 border-brand-purple/20 bg-brand-purple/5 space-y-6">
+                    <h3 className="text-lg font-display font-bold text-brand-text">Administrative Actions</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button className="p-4 bg-black/40 rounded-2xl border border-white/10 text-[10px] font-black uppercase text-brand-text-muted hover:text-brand-cyan hover:border-brand-cyan/30 transition-all">
+                        Sync Global Quotas
+                      </button>
+                      <button className="p-4 bg-black/40 rounded-2xl border border-white/10 text-[10px] font-black uppercase text-brand-text-muted hover:text-brand-purple hover:border-brand-purple/30 transition-all">
+                        Invalidate Session Cache
+                      </button>
+                      <button className="p-4 bg-black/40 rounded-2xl border border-white/10 text-[10px] font-black uppercase text-brand-text-muted hover:text-rose-500 hover:border-rose-500/30 transition-all">
+                        Emergency Lockdown
+                      </button>
+                      <button className="p-4 bg-black/40 rounded-2xl border border-white/10 text-[10px] font-black uppercase text-brand-text-muted hover:text-white hover:border-white/30 transition-all">
+                        Refresh System
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+
+            )}
           </div>
         </main>
       )}
@@ -1143,7 +1550,7 @@ export default function App() {
               <div className="w-3 h-3 rounded-full bg-brand-cyan shadow-[0_0_15px_var(--theme-accent-1)] shrink-0" />
               {!isSidebarCollapsed && (
                 <div className="flex flex-col">
-                  <h1 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">PsycheAI</h1>
+                  <h1 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">My Psych Lens</h1>
                   <span className="text-[9px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.7-dash</span>
                 </div>
               )}
