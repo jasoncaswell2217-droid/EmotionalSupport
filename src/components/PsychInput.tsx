@@ -129,38 +129,59 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
   }, [text]);
 
   return (
-    <div className="relative w-full mx-auto p-0 group">
-      {/* 1px refined glow container */}
-      <div className={cn(
-        "relative rounded-2xl p-[1px] transition-all duration-500",
-        isFocused ? "animate-bento-glow" : "bg-bento-border",
-        disabled && "opacity-50 grayscale pointer-events-none"
-      )}>
-        {/* Inner container */}
-        <div className="bg-bento-card rounded-[14px] flex flex-col p-2 md:p-3">
-          
-          {/* Image Previews */}
-          {images.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2 md:mb-3 px-1">
-              {images.map((img, idx) => (
-                <div key={idx} className="relative group/img w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden border border-bento-border shrink-0">
-                  <img src={`data:image/jpeg;base64,${img}`} className="w-full h-full object-cover" alt="Preview" />
-                  <button 
-                    onClick={() => removeImage(idx)}
-                    className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                  >
-                    <X size={10} className="text-white" />
-                  </button>
-                </div>
-              ))}
-              {isProcessingImage && (
-                <div className="w-12 h-12 md:w-16 md:h-16 rounded-lg bg-brand-text-muted/5 flex items-center justify-center animate-pulse border border-bento-border">
-                  <Loader2 size={14} className="text-brand-cyan animate-spin" />
-                </div>
-              )}
+    <div className="w-full mx-auto p-2 pb-4 md:p-0">
+      {/* Image Previews - Moved outside the pill to keep it clean */}
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3 px-2 md:px-0">
+          {images.map((img, idx) => (
+            <div key={idx} className="relative group/img w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden border border-white/10 shadow-2xl shrink-0">
+              <img src={`data:image/jpeg;base64,${img}`} className="w-full h-full object-cover" alt="Preview" />
+              <button 
+                onClick={() => removeImage(idx)}
+                className="absolute top-1 right-1 bg-black/60 backdrop-blur-md rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-all hover:scale-110"
+              >
+                <X size={12} className="text-white" />
+              </button>
+            </div>
+          ))}
+          {isProcessingImage && (
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-white/5 flex items-center justify-center animate-pulse border border-white/10">
+              <Loader2 size={16} className="text-brand-cyan animate-spin" />
             </div>
           )}
+        </div>
+      )}
 
+      {/* Main Input Row */}
+      <div className={cn(
+        "flex items-end gap-2 md:gap-4 w-full transition-opacity duration-300",
+        disabled && "opacity-50 grayscale pointer-events-none"
+      )}>
+        {/* Media Upload Button */}
+        <div className="shrink-0">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || images.length >= 4}
+            className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-brand-text-muted hover:text-brand-cyan transition-all hover:scale-105 active:scale-95 shadow-xl"
+            title="Attach images"
+          >
+            <ImageIcon size={20} />
+          </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            accept="image/*" 
+            className="hidden" 
+            multiple
+          />
+        </div>
+
+        {/* Input Bar Pill */}
+        <div className={cn(
+          "flex-1 flex items-end bg-black/60 backdrop-blur-xl border rounded-[28px] md:rounded-[32px] px-4 md:px-6 py-2 transition-all duration-300 group",
+          isFocused ? "border-brand-cyan/40 shadow-[0_0_20px_rgba(6,178,210,0.15)] ring-1 ring-brand-cyan/20" : "border-white/10"
+        )}>
           <textarea
             ref={textareaRef}
             rows={1}
@@ -169,49 +190,35 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="Share context, behavior, or visual scene..."
-            className="w-full bg-transparent border-none focus:ring-0 outline-none focus:outline-none text-brand-text placeholder-brand-text-muted/40 p-1 resize-none max-h-[150px] font-sans text-[13px] md:text-[14px]"
-            style={{ minHeight: '60px' }}
+            placeholder="Type a message..."
+            className="flex-1 bg-transparent border-none focus:ring-0 outline-none focus:outline-none text-brand-text placeholder-brand-text-muted/40 py-2.5 resize-none max-h-[150px] font-sans text-[15px] md:text-[16px] leading-[1.4]"
+            style={{ minHeight: '44px' }}
           />
-          
-          <div className="flex items-center justify-between mt-2 md:mt-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={disabled || images.length >= 4}
-                className="p-3 md:p-2 bg-brand-text-muted/5 hover:bg-brand-text-muted/10 rounded-xl transition-colors border border-bento-border text-brand-text-muted hover:text-brand-cyan min-w-[44px] min-h-[44px] flex items-center justify-center"
-                title="Add visual evidence (JPG/PNG)"
-              >
-                <ImageIcon size={20} className="md:w-[18px] md:h-[18px]" />
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageUpload} 
-                accept="image/*" 
-                className="hidden" 
-                multiple
-              />
-              <div className="flex gap-4 text-[10px] text-brand-text-muted uppercase tracking-widest font-semibold hidden md:block">
-                <span>Shift+Enter for new line</span>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleSend}
-              disabled={(!text.trim() && images.length === 0) || disabled}
-              className={cn(
-                "flex items-center justify-center px-4 md:px-6 py-3 md:py-2 rounded-xl transition-all font-semibold text-[13px] gap-2 min-h-[44px]",
-                "bg-brand-purple text-white hover:opacity-90",
-                "disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_4px_15px_var(--theme-accent-2)]"
-              )}
-            >
-              <Send size={16} className="md:w-[14px] md:h-[14px]" />
-              <span className="hidden sm:inline">Run Deep Analysis</span>
-              <span className="sm:hidden">Analyze</span>
-            </button>
-          </div>
         </div>
+
+        {/* Send Button */}
+        <div className="shrink-0">
+          <button
+            onClick={handleSend}
+            disabled={(!text.trim() && images.length === 0) || disabled}
+            className={cn(
+              "w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-2xl",
+              (!text.trim() && images.length === 0) || disabled
+                ? "bg-white/5 text-white/20 border border-white/5"
+                : "bg-brand-purple text-white shadow-[0_4px_15px_rgba(188,19,254,0.4)] hover:shadow-[0_4px_25px_rgba(188,19,254,0.6)]"
+            )}
+            title="Send Message"
+          >
+            <Send size={20} className={cn("transition-transform", isFocused && !disabled && text.trim() && "translate-x-0.5 -translate-y-0.5")} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Hidden Tip for Desktop */}
+      <div className="mt-2 text-center hidden md:block">
+        <span className="text-[10px] text-brand-text-muted/40 uppercase tracking-[0.2em] font-medium">
+          Shift + Enter for multi-line
+        </span>
       </div>
     </div>
   );
