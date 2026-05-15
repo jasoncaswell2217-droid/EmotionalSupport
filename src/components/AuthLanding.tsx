@@ -81,24 +81,25 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
           className="space-y-8"
         >
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-2xl shadow-brand-cyan/20 ring-1 ring-white/10">
-              <Brain size={36} className="text-white" />
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-2xl shadow-brand-cyan/20 ring-1 ring-white/10 shrink-0">
+              <Brain size={24} className="md:hidden text-white" />
+              <Brain size={36} className="hidden md:block text-white" />
             </div>
             <div>
-              <h1 className="text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+              <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
                 My Psych <span className="text-brand-cyan">Lens</span>
               </h1>
-              <p className="text-brand-text-muted text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+              <p className="text-brand-text-muted text-[10px] md:text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
                 Advanced Analytical Matrix v1.2
               </p>
             </div>
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-4xl md:text-6xl font-display font-medium text-brand-text leading-[1.1] tracking-tighter italic">
+            <h2 className="text-3xl md:text-6xl font-display font-medium text-brand-text leading-[1.1] tracking-tighter italic">
               Understand the <br /> <span className="text-brand-cyan">unseen paths</span> of thought.
             </h2>
-            <p className="text-brand-text-muted text-xl font-light leading-relaxed max-w-xl">
+            <p className="text-brand-text-muted text-lg md:text-xl font-light leading-relaxed max-w-xl">
               My Psych Lens is the world's most advanced analytical mirror. Harness state-of-the-art AI to decode deep behavioral signals, map cognitive breakthroughs, and achieve ultimate psychological synthesis.
             </p>
           </div>
@@ -155,10 +156,10 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
                   className="space-y-8"
                 >
                   <div>
-                    <h3 className="text-3xl font-display font-bold text-brand-text tracking-tight">
+                    <h3 className="text-2xl md:text-3xl font-display font-bold text-brand-text tracking-tight">
                       {mode === 'login' ? 'System Login' : 'Register Profile'}
                     </h3>
-                    <p className="text-brand-text-muted text-sm mt-2 font-light">
+                    <p className="text-brand-text-muted text-xs md:text-sm mt-2 font-light">
                       {mode === 'login' 
                         ? 'Initialize secure analytical session.' 
                         : 'Create a new subject entry in the matrix.'}
