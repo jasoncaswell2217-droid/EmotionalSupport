@@ -150,8 +150,8 @@ export default function App() {
     // Check-in
     updatePresence();
 
-    // Heartbeat every 45s to keep document alive
-    const interval = setInterval(updatePresence, 45000);
+    // Heartbeat every 30s to keep document alive
+    const interval = setInterval(updatePresence, 30000);
 
     // Cleanup on unmount or tab close
     window.addEventListener('beforeunload', cleanup);
@@ -163,7 +163,7 @@ export default function App() {
     };
   }, []);
 
-  // Sync visitor count for admins
+  // Sync visitor count for admins - with stale-check logic to handle silent departures
   useEffect(() => {
     if (role !== 'admin' || currentView !== 'admin' || !user) {
       setActiveVisitors(0);
@@ -171,14 +171,31 @@ export default function App() {
     }
 
     const presenceRef = collection(db, 'presence');
+    let presenceCache: { lastSeen: number }[] = [];
+
+    const calculateActive = () => {
+      const now = Date.now();
+      // Count documents seen in the last 70 seconds
+      const active = presenceCache.filter(p => now - (p.lastSeen || 0) < 70000).length;
+      setActiveVisitors(active);
+    };
+
     const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
-      setActiveVisitors(snapshot.size);
+      presenceCache = snapshot.docs.map(doc => doc.data() as { lastSeen: number });
+      calculateActive();
     }, (error) => {
       if (!error.message.includes('permission-denied')) {
         console.error("Presence sync error:", error);
       }
     });
-    return () => unsubscribe();
+
+    // Re-verify periodically to account for time passing even if DB hasn't changed
+    const ticker = setInterval(calculateActive, 10000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(ticker);
+    };
   }, [role, currentView, user]);
 
   // Global Stats Sync (Only for Admins to see details)
