@@ -45,6 +45,7 @@ export default function App() {
   });
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [activeVisitors, setActiveVisitors] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const contentEditorRef = useRef<HTMLTextAreaElement>(null);
 
@@ -118,6 +119,67 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Real-time Visitor Tracking
+  useEffect(() => {
+    // Session ID for this browser tab instance
+    let sessionId = sessionStorage.getItem('v_session_id');
+    if (!sessionId) {
+      sessionId = 'v_' + Math.random().toString(36).substring(2, 11);
+      sessionStorage.setItem('v_session_id', sessionId);
+    }
+
+    const presenceRef = doc(db, 'presence', sessionId);
+
+    const updatePresence = async () => {
+      try {
+        await setDoc(presenceRef, { lastSeen: Date.now() });
+      } catch (e) {
+        // Silently fail if rules prevent it or network is down
+      }
+    };
+
+    const cleanup = async () => {
+      try {
+        await deleteDoc(presenceRef);
+      } catch (e) {
+        // Silently fail on unload
+      }
+    };
+
+    // Check-in
+    updatePresence();
+
+    // Heartbeat every 45s to keep document alive
+    const interval = setInterval(updatePresence, 45000);
+
+    // Cleanup on unmount or tab close
+    window.addEventListener('beforeunload', cleanup);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', cleanup);
+      cleanup();
+    };
+  }, []);
+
+  // Sync visitor count for admins
+  useEffect(() => {
+    if (role !== 'admin' || currentView !== 'admin' || !user) {
+      setActiveVisitors(0);
+      return;
+    }
+
+    const presenceRef = collection(db, 'presence');
+    const unsubscribe = onSnapshot(presenceRef, (snapshot) => {
+      setActiveVisitors(snapshot.size);
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        console.error("Presence sync error:", error);
+      }
+    });
+    return () => unsubscribe();
+  }, [role, currentView, user]);
 
   // Global Stats Sync (Only for Admins to see details)
   useEffect(() => {
@@ -1148,6 +1210,23 @@ export default function App() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-6">
+                        {/* Real-time Visitor Card */}
+                        <div className="p-6 bg-brand-cyan/10 rounded-3xl border border-brand-cyan/20 space-y-4 shadow-[0_0_15px_rgba(6,178,210,0.1)]">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Active Visitors</span>
+                            <div className="flex items-center gap-1.5 font-mono text-[8px] font-black text-brand-cyan uppercase animate-pulse">
+                               <div className="w-1.5 h-1.5 rounded-full bg-brand-cyan" />
+                               LIVE
+                            </div>
+                          </div>
+                          <div className="text-4xl md:text-5xl font-display font-black text-brand-text italic">
+                            {activeVisitors}
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                            Neural uplink instances currently bridging with the network core.
+                          </p>
+                        </div>
+
                         <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Global AI Messages</span>

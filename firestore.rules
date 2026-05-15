@@ -82,6 +82,12 @@ service cloud.firestore {
         && data.registrationDisabledMessage is string && data.registrationDisabledMessage.size() <= 1000;
     }
 
+    function isValidPresence(data) {
+      return data.keys().hasAll(['lastSeen'])
+        && data.keys().size() == 1
+        && data.lastSeen is int;
+    }
+
     // --- Matches ---
     match /users/{userId} {
       // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
@@ -128,6 +134,11 @@ service cloud.firestore {
     match /settings/global {
       allow get: if true; // Public read
       allow write: if isAdmin() && isValidSystemSettings(incoming());
+    }
+
+    match /presence/{sessionId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isValidId(sessionId) && (request.method == 'delete' || isValidPresence(incoming()));
     }
   }
 }

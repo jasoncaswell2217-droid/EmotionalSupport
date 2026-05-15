@@ -55,9 +55,22 @@
         "registrationEnabled": { "type": "boolean" },
         "registrationDisabledMessage": { "type": "string" }
       }
+    },
+    "ActiveSession": {
+      "title": "ActiveSession",
+      "description": "Represents an active visitor session.",
+      "type": "object",
+      "properties": {
+        "lastSeen": { "type": "integer" }
+      },
+      "required": ["lastSeen"]
     }
   },
   "firestore": {
+    "/presence/{sessionId}": {
+      "schema": "ActiveSession",
+      "description": "Active users currently on the site."
+    },
     "/settings/global": {
       "schema": "SystemSettings",
       "description": "Global application settings."
