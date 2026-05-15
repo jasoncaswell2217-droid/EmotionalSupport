@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile } from 'lucide-react';
+import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile, Heading1, ListOrdered, Minus } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
@@ -10,6 +10,8 @@ import { auth, db, googleProvider, OperationType, handleFirestoreError } from '.
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy, writeBatch, Timestamp, serverTimestamp, increment } from 'firebase/firestore';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie } from 'recharts';
 
 const THEMES = [
@@ -900,39 +902,43 @@ export default function App() {
         {/* VIEW SWITCHER */}
         <div className="flex-1 flex items-center justify-center mx-2 md:mx-4 overflow-hidden">
           <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
-            <button 
-              onClick={() => {
-                setCurrentView('chat');
-              }}
-              className={cn(
-                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-              )}
-            >
-              <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
-            </button>
-            <button 
-              onClick={() => {
-                setCurrentView('history');
-              }}
-              className={cn(
-                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-              )}
-            >
-              <History size={14} /> <span className="hidden sm:inline">Chats</span>
-            </button>
-            <button 
-              onClick={() => {
-                setCurrentView('analytics');
-              }}
-              className={cn(
-                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-              )}
-            >
-              <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
-            </button>
+            {user && (
+              <>
+                <button 
+                  onClick={() => {
+                    setCurrentView('chat');
+                  }}
+                  className={cn(
+                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                    currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setCurrentView('history');
+                  }}
+                  className={cn(
+                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                    currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <History size={14} /> <span className="hidden sm:inline">Chats</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setCurrentView('analytics');
+                  }}
+                  className={cn(
+                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                    currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
+                </button>
+              </>
+            )}
             <button 
               onClick={() => {
                 setCurrentView('how-it-works');
@@ -1020,13 +1026,15 @@ export default function App() {
             </button>
           )}
 
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-text transition-all group shrink-0"
-            title="System Configuration"
-          >
-            <Settings size={20} className="group-hover:rotate-45 transition-transform" />
-          </button>
+          {user && (
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-text transition-all group shrink-0"
+              title="System Configuration"
+            >
+              <Settings size={20} className="group-hover:rotate-45 transition-transform" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -1567,13 +1575,21 @@ export default function App() {
                       <label className="text-[10px] uppercase tracking-widest font-black text-brand-text-muted opacity-50">Content Body</label>
                       <div className="w-full bg-black/40 border border-white/5 rounded-2xl overflow-hidden focus-within:border-brand-purple/50 transition-all">
                         <div className="flex flex-wrap items-center gap-1 p-2 bg-white/5 border-b border-white/5">
+                          <button onClick={() => insertIntoContent('# ')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Heading"><Heading1 size={16} /></button>
+                          <div className="w-px h-4 bg-white/10 mx-1" />
                           <button onClick={() => insertIntoContent('**', '**')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Bold"><Bold size={16} /></button>
                           <button onClick={() => insertIntoContent('_', '_')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Italic"><Italic size={16} /></button>
+                          <div className="w-px h-4 bg-white/10 mx-1" />
                           <button onClick={() => insertIntoContent('\n- ')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Bullet List"><List size={16} /></button>
+                          <button onClick={() => insertIntoContent('\n1. ')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Numbered List"><ListOrdered size={16} /></button>
+                          <button onClick={() => insertIntoContent('\n\n--- \n')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Horizontal Rule"><Minus size={16} /></button>
+                          <div className="w-px h-4 bg-white/10 mx-1" />
+                          <button onClick={() => insertIntoContent('\n\n')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="New Line"><div className="w-4 h-4 border-l-2 border-b-2 border-brand-text-muted/50 rounded-bl" /></button>
                           <div className="w-px h-4 bg-white/10 mx-1" />
                           <button onClick={() => insertIntoContent('![Image Description](', ')')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Insert Image"><ImageIcon size={16} /></button>
+                          <button onClick={() => insertIntoContent('\n<details>\n<summary>Container Title</summary>\n\nEnter details here...\n</details>\n')} className="p-2 hover:bg-white/10 rounded-lg text-brand-text-muted hover:text-brand-text transition-all" title="Expandable Container"><ChevronDown size={18} /></button>
                           <div className="w-px h-4 bg-white/10 mx-1" />
-                          {['🧠', '✨', '🔬', '🛡️', '⚡', '📊'].map(emoji => (
+                          {['🧠', '✨', '🔬', '🛡️', '⚡', '📊', '🧬', '📡', '👁️', '🌀', '💎', '⌛', '🔓', '🚀', '🛠️', '📱', '💻', '💡', '🔥', '📍'].map(emoji => (
                             <button 
                               key={emoji} 
                               onClick={() => insertIntoContent(emoji)} 
@@ -2272,9 +2288,9 @@ export default function App() {
               {howItWorksContent.title}
             </h2>
             
-            <div className="prose prose-invert max-w-none">
+            <div className="prose prose-invert max-w-none mt-12">
               <div className="markdown-body">
-                <Markdown>
+                <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                   {howItWorksContent.content}
                 </Markdown>
               </div>

@@ -129,4 +129,77 @@
   @apply backdrop-blur-md;
 }
 
+/* Clean & Professional Markdown Styling */
+.markdown-body {
+  @apply space-y-8;
+}
+
+.markdown-body p {
+  @apply mb-6 leading-relaxed text-brand-text/80 text-base md:text-lg;
+}
+
+.markdown-body h1 { @apply text-4xl font-black mb-10 text-brand-text uppercase italic tracking-tighter; }
+.markdown-body h2 { @apply text-3xl font-bold mb-8 text-brand-text/90 uppercase tracking-tight; }
+.markdown-body h3 { @apply text-2xl font-bold mb-6 text-brand-text/90; }
+
+.markdown-body ul { @apply list-disc list-outside mb-6 space-y-3 ml-6; }
+.markdown-body ol { @apply list-decimal list-outside mb-6 space-y-3 ml-6; }
+.markdown-body li { @apply text-brand-text/80 pl-2; }
+
+.markdown-body hr {
+  @apply my-12 border-t border-white/10;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-brand-purple/50 bg-brand-purple/5 p-6 mb-8 rounded-r-xl italic text-brand-text/70;
+}
+
+.markdown-body details {
+  @apply my-8 border border-white/5 rounded-2xl bg-black/40 overflow-hidden shadow-xl transition-all duration-300;
+}
+
+.markdown-body summary {
+  @apply px-6 py-4 cursor-pointer font-bold uppercase tracking-widest text-[10px] md:text-xs bg-white/[0.03] hover:bg-white/[0.07] transition-all select-none list-none flex items-center gap-4 border-b border-transparent;
+}
+
+.markdown-body summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-body summary::before {
+  content: '';
+  @apply w-2 h-2 border-t-2 border-r-2 border-brand-cyan rotate-45 transition-transform shrink-0 opacity-50;
+}
+
+.markdown-body details[open] > summary {
+  @apply border-white/5 bg-white/[0.05] text-brand-cyan;
+}
+
+.markdown-body details[open] > summary::before {
+  @apply rotate-135 opacity-100;
+}
+
+/* Content Area Padding - CRITICAL FIX */
+.markdown-body details > div,
+.markdown-body details > p,
+.markdown-body details > ul,
+.markdown-body details > ol {
+  @apply px-8 py-8 md:px-12 md:py-10 bg-black/20;
+}
+
+/* Ensure subsequent elements inside details don't have double vertical padding */
+.markdown-body details > :not(summary) + :not(summary) {
+  @apply mt-0 pt-0;
+}
+
+/* Reset margin for first element inside details to respect container padding */
+.markdown-body details > :not(summary):first-child {
+  @apply mt-0;
+}
+
+/* Allow for double line breaks in markdown */
+.markdown-body br {
+  @apply mb-4 block content-[''];
+}
+
 
