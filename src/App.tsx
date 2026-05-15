@@ -901,7 +901,6 @@ export default function App() {
 
   if (!user && showLanding && currentView !== 'how-it-works') {
     return <AuthLanding 
-      onGuestMode={() => setShowLanding(false)} 
       onShowHowItWorks={() => setCurrentView('how-it-works')} 
       registrationEnabled={systemSettings.registrationEnabled}
       registrationDisabledMessage={systemSettings.registrationDisabledMessage}

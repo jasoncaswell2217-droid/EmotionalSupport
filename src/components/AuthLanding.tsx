@@ -25,14 +25,12 @@ import {
 import { cn } from '../lib/utils';
 
 interface AuthLandingProps {
-  onGuestMode?: () => void;
   onShowHowItWorks?: () => void;
   registrationEnabled?: boolean;
   registrationDisabledMessage?: string;
 }
 
 export function AuthLanding({ 
-  onGuestMode, 
   onShowHowItWorks, 
   registrationEnabled = true, 
   registrationDisabledMessage = "Registration Disabled By The Admins" 
@@ -284,22 +282,14 @@ export function AuthLanding({
                       <span className="text-xs uppercase font-bold tracking-widest">Connect with Google</span>
                     </button>
                     
-                    {onGuestMode && (
+                    {onShowHowItWorks && (
                       <div className="flex flex-col gap-3">
                         <button 
-                          onClick={onGuestMode}
-                          className="text-[10px] text-brand-text-muted/60 hover:text-brand-cyan uppercase tracking-widest font-black transition-all"
+                          onClick={onShowHowItWorks}
+                          className="px-6 py-2 border border-white/10 rounded-xl text-[10px] text-brand-cyan uppercase tracking-widest font-black transition-all hover:bg-brand-cyan/5 hover:border-brand-cyan/30"
                         >
-                          Proceed as Guest (Local Only)
+                          How It Works
                         </button>
-                        {onShowHowItWorks && (
-                          <button 
-                            onClick={onShowHowItWorks}
-                            className="px-6 py-2 border border-white/10 rounded-xl text-[10px] text-brand-cyan uppercase tracking-widest font-black transition-all hover:bg-brand-cyan/5 hover:border-brand-cyan/30"
-                          >
-                            How It Works
-                          </button>
-                        )}
                       </div>
                     )}
                   </div>
