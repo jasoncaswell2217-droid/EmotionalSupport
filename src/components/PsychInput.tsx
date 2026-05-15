@@ -158,14 +158,14 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
         disabled && "opacity-50 grayscale pointer-events-none"
       )}>
         {/* Media Upload Button */}
-        <div className="shrink-0">
+        <div className="shrink-0 mb-0.5">
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || images.length >= 4}
-            className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-black/40 hover:bg-black/60 border border-white/10 flex items-center justify-center text-brand-text-muted hover:text-brand-cyan transition-all hover:scale-105 active:scale-95 shadow-xl"
+            className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-brand-text-muted hover:text-brand-cyan transition-all hover:scale-105 active:scale-95 shadow-xl"
             title="Attach images"
           >
-            <ImageIcon size={20} />
+            <ImageIcon size={18} className="md:w-5 md:h-5" />
           </button>
           <input 
             type="file" 
@@ -179,8 +179,8 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
 
         {/* Input Bar Pill */}
         <div className={cn(
-          "flex-1 flex items-end bg-black/60 backdrop-blur-xl border rounded-[28px] md:rounded-[32px] px-4 md:px-6 py-2 transition-all duration-300 group",
-          isFocused ? "border-brand-cyan/40 shadow-[0_0_20px_rgba(6,178,210,0.15)] ring-1 ring-brand-cyan/20" : "border-white/10"
+          "flex-1 flex items-end bg-white/10 md:bg-black/60 backdrop-blur-xl border rounded-[24px] md:rounded-[32px] px-4 md:px-6 py-1 md:py-2 transition-all duration-300 group",
+          isFocused ? "border-brand-cyan/60 shadow-[0_0_30px_rgba(6,178,210,0.2)] ring-1 ring-brand-cyan/30 bg-white/15" : "border-white/25 md:border-white/15"
         )}>
           <textarea
             ref={textareaRef}
@@ -191,13 +191,13 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent border-none focus:ring-0 outline-none focus:outline-none text-brand-text placeholder-brand-text-muted/40 py-2.5 resize-none max-h-[150px] font-sans text-[15px] md:text-[16px] leading-[1.4]"
+            className="flex-1 bg-transparent border-none focus:ring-0 outline-none focus:outline-none text-brand-text placeholder-brand-text/50 py-2.5 resize-none max-h-[150px] font-sans text-[15px] md:text-[16px] leading-[1.4]"
             style={{ minHeight: '44px' }}
           />
         </div>
 
         {/* Send Button */}
-        <div className="shrink-0">
+        <div className="shrink-0 mb-0.5">
           <button
             onClick={handleSend}
             disabled={(!text.trim() && images.length === 0) || disabled}
@@ -209,7 +209,7 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
             )}
             title="Send Message"
           >
-            <Send size={20} className={cn("transition-transform", isFocused && !disabled && text.trim() && "translate-x-0.5 -translate-y-0.5")} />
+            <Send size={18} className={cn("md:w-5 md:h-5 transition-transform", isFocused && !disabled && text.trim() && "translate-x-0.5 -translate-y-0.5")} />
           </button>
         </div>
       </div>

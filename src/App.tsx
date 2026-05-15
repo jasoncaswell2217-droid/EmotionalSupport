@@ -27,7 +27,8 @@ interface Session {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'chat' | 'analytics' | 'admin'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'history' | 'analytics' | 'admin'>('chat');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'theme'>('general');
   const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users'>('overview');
   const [pricingType, setPricingType] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [isLoading, setIsLoading] = useState(false);
@@ -369,9 +370,7 @@ export default function App() {
   const [loadingStepIndex, setLoadingStepIndex] = useState(-1);
   const [currentMood, setCurrentMood] = useState<string>("Observing...");
   const [showFullHistory, setShowFullHistory] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [activeMobileView, setActiveMobileView] = useState<'chat' | 'history' | 'analytics'>('chat');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -540,8 +539,6 @@ export default function App() {
     }
 
     const newUserMessage: Message = { id: generateId(), role: 'user', parts, timestamp: Date.now() };
-    
-    setActiveMobileView('chat');
     
     if (user) {
       await updateCurrentSession([...messages, newUserMessage]);
@@ -835,86 +832,139 @@ export default function App() {
   }
 
   return (
-    <div data-theme={theme} className="h-screen w-screen bg-bento-bg text-brand-text font-sans overflow-hidden flex selection:bg-brand-cyan/30 transition-colors duration-500">
+    <div data-theme={theme} className="h-screen w-screen bg-bento-bg text-brand-text font-sans overflow-hidden flex flex-col selection:bg-brand-cyan/30 transition-colors duration-500">
       
-      {/* GLOBAL NAVIGATION SIDEBAR */}
-      <nav className="w-16 border-r border-bento-border bg-bento-bg/80 backdrop-blur-xl flex flex-col items-center py-6 gap-6 z-50 shrink-0">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-lg shadow-brand-cyan/20">
-          <Brain size={18} className="text-white" />
+      {/* GLOBAL TOP NAVIGATION */}
+      {/* GLOBAL TOP NAVIGATION */}
+      <header className="h-16 border-b border-bento-border bg-bento-bg z-50 shrink-0 px-4 md:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-lg shadow-brand-cyan/20 shrink-0">
+            <Brain size={22} className="text-white" />
+          </div>
+          <div className="hidden md:flex flex-col">
+            <h1 className="font-display font-bold text-lg tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap leading-none">My Psych Lens</h1>
+            <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5">Matrix v1.2.8</span>
+          </div>
         </div>
-        
-        <div className="flex flex-col gap-4 mt-8 flex-1">
+
+        {/* VIEW SWITCHER */}
+        <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 mx-2 md:mx-4">
           <button 
             onClick={() => {
               setCurrentView('chat');
-              setActiveMobileView('chat');
             }}
             className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
-              currentView === 'chat' ? "bg-brand-cyan/10 text-brand-cyan shadow-[0_0_15px_rgba(6,178,210,0.2)]" : "text-brand-text-muted hover:bg-brand-text-muted/5"
+              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+              currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
             )}
-            title="Chat Engine"
           >
-            <MessageSquare size={20} />
-            {currentView === 'chat' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-cyan rounded-r-full" />}
+            <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
           </button>
-
+          <button 
+            onClick={() => {
+              setCurrentView('history');
+            }}
+            className={cn(
+              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+              currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+            )}
+          >
+            <History size={14} /> <span className="hidden sm:inline">Chats</span>
+          </button>
           <button 
             onClick={() => {
               setCurrentView('analytics');
-              setActiveMobileView('analytics');
             }}
             className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
-              currentView === 'analytics' ? "bg-brand-purple/10 text-brand-purple shadow-[0_0_15px_rgba(139,92,246,0.2)]" : "text-brand-text-muted hover:bg-brand-text-muted/5"
+              "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+              currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
             )}
-            title="Neural Diagnostics"
           >
-            <BarChart3 size={20} />
-            {currentView === 'analytics' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-purple rounded-r-full" />}
+            <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
           </button>
-
+          
           {role === 'admin' && (
             <button 
               onClick={() => {
                 setCurrentView('admin');
-                setActiveMobileView('chat');
               }}
               className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
-                currentView === 'admin' ? "bg-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_rgba(6,178,210,0.4)] ring-1 ring-brand-cyan/50" : "text-brand-text-muted hover:bg-brand-cyan/5 hover:text-brand-cyan"
+                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                currentView === 'admin' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
               )}
-              title="Admin Dashboard"
             >
-              <Shield size={20} />
-              {currentView === 'admin' && <motion.div layoutId="nav-acc" className="absolute left-[-1.5rem] w-1 h-6 bg-brand-cyan rounded-r-full shadow-[0_0_10px_var(--theme-accent-1)]" />}
-              <div className="absolute top-0 right-0 w-2 h-2 bg-brand-cyan rounded-full border border-bento-bg" />
-            </button>
-          )}
-
-          {!user && (
-            <button 
-              onClick={() => setShowLanding(true)}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-cyan transition-all group relative mt-4 border border-dashed border-white/10"
-              title="Return to Welcome Screen"
-            >
-              <LogIn size={20} />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-brand-cyan rounded-full animate-pulse" />
+              <Shield size={14} /> <span className="hidden sm:inline">Admin</span>
             </button>
           )}
         </div>
 
-        <button 
-          onClick={() => setIsSettingsOpen(true)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-brand-text-muted/5 hover:text-brand-text transition-all group"
-          title="System Configuration"
-        >
-          <Settings size={20} className="group-hover:rotate-45 transition-transform" />
-        </button>
-      </nav>
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* CONTEXTUAL CHAT TOOLS */}
+          {currentView === 'chat' && (
+            <div className="flex items-center gap-2 border-r border-white/5 pr-2 md:pr-4 mr-1">
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-brand-cyan/5 rounded-xl border border-brand-cyan/20 text-[8px] font-black text-brand-cyan uppercase tracking-widest">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-brand-cyan"></span>
+                </span>
+                <span>SYNC ACTIVE</span>
+              </div>
 
-      {/* ADMIN VIEW */}
-      {currentView === 'admin' && role === 'admin' && (
+              <button 
+                onClick={handleDeleteClick}
+                className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
+                  isConfirmingDelete ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "bg-white/5 border border-white/10 text-brand-text-muted hover:text-brand-orange hover:bg-brand-orange/5"
+                )}
+                title="Purge Active Session"
+              >
+                <Trash2 size={18} />
+                {isConfirmingDelete && (
+                  <motion.div 
+                    layoutId="purge-badge"
+                    className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-white text-[6px] font-black uppercase text-black italic animate-bounce"
+                  >
+                    CONFIRM
+                  </motion.div>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* USER INFO */}
+          {user ? (
+            <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-bento-card border border-bento-border rounded-xl text-[10px] font-mono shrink-0">
+               <div className="flex flex-col text-right">
+                 <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[120px] leading-tight">{user.email?.split('@')[0]}</span>
+                 {role === 'admin' && <span className="text-[7px] text-brand-cyan font-black uppercase italic">Administrator</span>}
+               </div>
+               <div className="w-[1px] h-4 bg-white/10" />
+               <button onClick={() => signOut(auth)} className="p-1 hover:text-brand-cyan transition-colors" title="Sign Out">
+                 <LogOut size={14} />
+               </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => signInWithPopup(auth, googleProvider)}
+              className="px-4 py-2 bg-brand-cyan text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-cyan/80 transition-all flex items-center gap-2"
+            >
+              <LogIn size={14} /> Sync
+            </button>
+          )}
+
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-text transition-all group shrink-0"
+            title="System Configuration"
+          >
+            <Settings size={20} className="group-hover:rotate-45 transition-transform" />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Main Content Areas */}
+        {currentView === 'admin' && role === 'admin' && (
         <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
           <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -1529,174 +1579,116 @@ export default function App() {
           </div>
         </main>
       )}
-      <aside className={cn(
-        "border-r border-bento-border flex flex-col bg-bento-bg/30 backdrop-blur-sm shrink-0 z-40 transition-all duration-300",
-        "fixed inset-y-0 left-16 md:relative md:left-0",
-        currentView !== 'chat' && "w-0 p-0 overflow-hidden border-none border-0",
-        currentView === 'chat' && (isSidebarCollapsed ? "w-[0px] md:w-[0px] border-none overflow-hidden" : "w-[340px] border-r"),
-        activeMobileView === 'history' && currentView === 'chat' ? "translate-x-0 visible w-[340px]" : ""
-      )}>
-        {/* Mobile Backdrop for Sidebar */}
-        <div 
-          className={cn(
-            "fixed inset-0 bg-black/60 md:hidden z-[-1] transition-opacity duration-300",
-            activeMobileView === 'history' ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-          onClick={() => setActiveMobileView('chat')}
-        />
-        <div className="flex flex-col h-full p-6">
-          <div className={cn("flex items-center mb-10", isSidebarCollapsed ? "justify-center" : "justify-between")}>
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-3 h-3 rounded-full bg-brand-cyan shadow-[0_0_15px_var(--theme-accent-1)] shrink-0" />
-              {!isSidebarCollapsed && (
-                <div className="flex flex-col">
-                  <h1 className="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap">My Psych Lens</h1>
-                  <span className="text-[9px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5 ml-1">v1.2.7-dash</span>
+      {/* HISTORY VIEW */}
+      {currentView === 'history' && (
+        <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
+          <div className="max-w-4xl mx-auto w-full space-y-8 md:space-y-12 pb-24">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
+                  <History size={32} className="text-brand-cyan" />
                 </div>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={cn(
-                "p-2 hover:bg-brand-text-muted/10 rounded-lg transition-all text-brand-text-muted hover:text-brand-cyan active:scale-95",
-                isSidebarCollapsed && "mt-2"
-              )}
-              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {isSidebarCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
-            </button>
-          </div>
+                <div>
+                  <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+                    Session <span className="text-brand-cyan">Archive</span>
+                  </h1>
+                  <p className="text-brand-text-muted text-[10px] md:text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+                    Search Intelligence Archive
+                  </p>
+                </div>
+              </div>
 
-          <button 
-            onClick={createNewSession}
-            className={cn(
-              "flex items-center justify-center gap-3 bg-brand-cyan/10 hover:bg-brand-cyan/20 rounded-2xl transition-all border border-brand-cyan/20 group active:scale-[0.98] mb-10 overflow-hidden shrink-0",
-              isSidebarCollapsed ? "h-14 w-full" : "w-full py-4 px-6"
-            )}
-            title="Start New Chat"
-          >
-            <Plus size={20} className="text-brand-cyan group-hover:scale-125 transition-transform" />
-            {!isSidebarCollapsed && <span className="text-sm font-bold text-brand-text tracking-tight">New Chat</span>}
-          </button>
+              <button 
+                onClick={createNewSession}
+                className="px-6 py-3 bg-brand-cyan text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-cyan/80 transition-all flex items-center gap-2 shadow-lg shadow-brand-cyan/20 active:scale-95"
+              >
+                <Plus size={16} /> New Analysis
+              </button>
+            </header>
 
-          <div className={cn("flex flex-col gap-3 flex-1 overflow-hidden", isSidebarCollapsed && "hidden")}>
-            <div className={cn(
-              "text-[10px] uppercase tracking-[0.25em] text-brand-text-muted font-black mb-4 flex items-center gap-2 opacity-50 px-2",
-              isSidebarCollapsed ? "justify-center" : "justify-start"
-            )}>
-              <History size={14} className="shrink-0" /> 
-              {!isSidebarCollapsed && <span className="whitespace-nowrap">Chat History</span>}
-            </div>
-          
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
-            <AnimatePresence mode='popLayout'>
-              {isMigrating && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="py-12 px-4 text-center border border-dashed border-brand-cyan/20 rounded-2xl bg-brand-cyan/5"
-                >
-                  <Database size={24} className="mx-auto mb-3 text-brand-cyan animate-bounce" />
-                  <div className="text-[10px] text-brand-cyan font-mono uppercase tracking-widest leading-relaxed">
-                    Migrating Data ({migrationProgress.current}/{migrationProgress.total})
-                  </div>
-                </motion.div>
-              )}
-              {Object.keys(sessions).length === 0 && !isMigrating && !isAuthLoading && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="py-12 px-4 text-center border border-dashed border-bento-border rounded-2xl opacity-40"
-                >
-                  <div className="text-[10px] text-brand-text-muted font-mono uppercase tracking-widest leading-relaxed">
-                    {user ? "Connecting to cloud sync..." : "Zero investigations found."}
-                  </div>
-                </motion.div>
-              )}
-              {Object.values(sessions).sort((a,b) => b.createdAt - a.createdAt).map((session) => (
-                <motion.div
-                  key={session.id}
-                  layout
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  onClick={() => {
-                    setCurrentSessionId(session.id);
-                    setActiveMobileView('chat');
-                  }}
-                  className={cn(
-                    "group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border relative overflow-hidden",
-                    currentSessionId === session.id 
-                      ? "bg-brand-cyan/10 border-brand-cyan/20 shadow-md" 
-                      : "bg-transparent border-transparent hover:bg-brand-text-muted/5 hover:border-bento-border",
-                    isSidebarCollapsed ? "justify-center" : "justify-start"
-                  )}
-                  title={isSidebarCollapsed ? session.title : undefined}
-                >
-                  <MessageSquare size={16} className={cn(
-                    "shrink-0 transition-colors",
-                    currentSessionId === session.id ? "text-brand-cyan" : "text-brand-text-muted/40"
-                  )} />
-                  {!isSidebarCollapsed && (
+            <div className="grid grid-cols-1 gap-4">
+              <AnimatePresence mode='popLayout'>
+                {isMigrating && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-12 px-4 text-center border border-dashed border-brand-cyan/20 rounded-2xl bg-brand-cyan/5"
+                  >
+                    <Database size={24} className="mx-auto mb-3 text-brand-cyan animate-bounce" />
+                    <div className="text-[10px] text-brand-cyan font-mono uppercase tracking-widest leading-relaxed">
+                      Migrating Data ({migrationProgress.current}/{migrationProgress.total})
+                    </div>
+                  </motion.div>
+                )}
+                {Object.keys(sessions).length === 0 && !isMigrating && !isAuthLoading && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="py-24 px-4 text-center border border-dashed border-bento-border rounded-3xl opacity-40"
+                  >
+                    <div className="text-sm text-brand-text-muted font-mono uppercase tracking-widest leading-relaxed">
+                      {user ? "Connecting to cloud sync..." : "Zero investigations found."}
+                    </div>
+                  </motion.div>
+                )}
+                {Object.values(sessions).sort((a,b) => b.createdAt - a.createdAt).map((session) => (
+                  <motion.div
+                    key={session.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={() => {
+                      setCurrentSessionId(session.id);
+                      setCurrentView('chat');
+                    }}
+                    className={cn(
+                      "group flex items-center gap-6 p-6 rounded-3xl cursor-pointer transition-all border relative overflow-hidden",
+                      currentSessionId === session.id 
+                        ? "bg-brand-cyan/10 border-brand-cyan/30 shadow-xl shadow-brand-cyan/5" 
+                        : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                      currentSessionId === session.id ? "bg-brand-cyan text-black" : "bg-white/5 text-brand-text-muted/40"
+                    )}>
+                      <MessageSquare size={20} />
+                    </div>
+                    
                     <div className="flex-1 min-w-0">
                       <div className={cn(
-                        "text-[14px] font-semibold truncate transition-colors mb-0.5",
-                        currentSessionId === session.id ? "text-brand-text" : "text-brand-text-muted group-hover:text-brand-text font-normal"
+                        "text-lg font-bold truncate transition-colors mb-1",
+                        currentSessionId === session.id ? "text-brand-text" : "text-brand-text-muted group-hover:text-brand-text"
                       )}>
                         {session.title}
                       </div>
-                      <div className="text-[11px] text-brand-text-muted/40 font-mono">
-                        {new Date(session.createdAt).toLocaleDateString()}
+                      <div className="flex items-center gap-4 text-[11px] text-brand-text-muted/40 font-mono uppercase tracking-widest">
+                        <span>{new Date(session.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>{session.messages.length} Nodes</span>
                       </div>
                     </div>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
 
-        <div className="pt-6 border-t border-bento-border mt-6">
-          <div className={cn(
-            "text-[10px] uppercase tracking-[0.25em] text-brand-text-muted font-black mb-6 flex items-center gap-2 opacity-50 px-2",
-            isSidebarCollapsed ? "justify-center" : "justify-start"
-          )}>
-            <Palette size={14} className="shrink-0" /> 
-            {!isSidebarCollapsed && <span className="whitespace-nowrap">UI Theme Selection</span>}
-          </div>
-          <div className={cn("flex flex-wrap gap-3 px-1", isSidebarCollapsed ? "justify-center" : "justify-start")}>
-            {THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTheme(t.id)}
-                title={t.label}
-                className={cn(
-                  "w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center overflow-hidden active:scale-90 shrink-0",
-                  theme === t.id ? "border-brand-cyan scale-110 shadow-lg" : "border-transparent opacity-60 hover:opacity-100 hover:scale-105"
-                )}
-                style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }}
-              >
-                {theme === t.id && <Check size={14} className="text-white drop-shadow-md" />}
-              </button>
-            ))}
-          </div>
-        </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => deleteSession(e, session.id)}
+                        className="p-2.5 hover:bg-rose-500/10 rounded-xl transition-all text-brand-text-muted hover:text-rose-500"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
 
-        <div className="pt-6 mt-auto border-t border-bento-border">
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className={cn(
-              "w-full flex items-center gap-4 p-4 rounded-2xl transition-all text-brand-text-muted hover:text-brand-text hover:bg-brand-text-muted/5 group",
-              isSidebarCollapsed ? "justify-center" : "justify-start"
-            )}
-          >
-            <Settings size={20} className="shrink-0 group-hover:rotate-90 transition-transform duration-500" />
-            {!isSidebarCollapsed && <span className="text-[14px] font-bold">Preferences</span>}
-          </button>
-        </div>
-      </div>
-      </aside>
+                    {currentSessionId === session.id && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-cyan" />
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        </main>
+      )}
 
       {/* ANALYTICS VIEW */}
       {currentView === 'analytics' && (
@@ -1846,132 +1838,16 @@ export default function App() {
           <div className="absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(circle,var(--theme-accent-2)_0%,transparent_70%)] blur-[120px]" />
         </div>
 
-        {/* TOP BAR */}
-        <header className="h-16 border-b border-bento-border px-4 md:px-8 flex items-center justify-between bg-bento-bg/80 backdrop-blur-xl z-20 shrink-0">
-          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-            <button 
-              onClick={() => {
-                if (window.innerWidth < 768) {
-                  setActiveMobileView(activeMobileView === 'history' ? 'chat' : 'history');
-                } else {
-                  setIsSidebarCollapsed(!isSidebarCollapsed);
-                }
-              }}
-              className="p-3 -ml-2 text-brand-text-muted hover:text-brand-cyan transition-colors shrink-0"
-              aria-label="Toggle Sessions"
-            >
-              <PanelLeft size={22} className={cn((!isSidebarCollapsed || activeMobileView === 'history') && "text-brand-cyan")} />
-            </button>
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              <div className="flex px-2 md:px-3 py-1 bg-brand-cyan/10 rounded-full border border-brand-cyan/20 text-[8px] md:text-[10px] font-black text-brand-cyan uppercase tracking-widest items-center gap-1.5 md:gap-2 shrink-0">
-                <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-brand-cyan"></span>
-                </span>
-                <span className="hidden sm:inline">CORE SYNC ACTIVE</span>
-                <span className="sm:hidden text-[7px]">SYNC</span>
-              </div>
-
-              {role === 'admin' && globalStats && (
-                <div className="hidden lg:flex items-center gap-3 px-3 py-1 bg-black/40 border border-white/5 rounded-full text-[9px] font-mono shrink-0">
-                  <div className="flex items-center gap-1.5">
-                    <Activity size={10} className="text-brand-cyan" />
-                    <span className="text-brand-text-muted uppercase">LOAD</span>
-                    <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-brand-cyan" 
-                        style={{ width: `${Math.min(100, (globalStats.totalMessages / 100))}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="w-[1px] h-3 bg-white/10" />
-                  <div className="flex items-center gap-1.5">
-                    <Users size={10} className="text-brand-purple" />
-                    <span className="text-brand-text-muted uppercase">NODES</span>
-                    <span className="text-brand-purple font-black">{globalStats.totalUsers || 0}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-[7px] font-mono text-brand-text-muted uppercase tracking-widest shrink-0">
-                v1.2.8-stable
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 md:gap-3">
-             <AnimatePresence>
-               {isMigrating && (
-                 <motion.div 
-                   initial={{ opacity: 0, x: 20 }}
-                   animate={{ opacity: 1, x: 0 }}
-                   exit={{ opacity: 0, x: 20 }}
-                   className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-brand-cyan/10 border border-brand-cyan/20 rounded-lg text-[10px] font-mono text-brand-cyan animate-pulse"
-                 >
-                   <div className="w-2 h-2 rounded-full bg-brand-cyan" />
-                   <span className="uppercase tracking-widest">Migrating ({migrationProgress.current}/{migrationProgress.total})</span>
-                 </motion.div>
-               )}
-             </AnimatePresence>
-
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
-               <div className="flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-5 md:py-2.5 bg-bento-card border border-bento-border rounded-xl text-[10px] md:text-[11px] font-mono shadow-[inset_0_1px_4px_rgba(0,0,0,0.5)]">
-                 {user ? (
-                   <>
-                     <div className="flex flex-col text-right">
-                       <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[80px] md:max-w-[160px] leading-tight grow">{user.email?.split('@')[0]}</span>
-                       {role === 'admin' && (
-                         <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                           <div className="px-2 py-0.5 rounded-full bg-brand-cyan/20 border border-brand-cyan/30 flex items-center gap-1 shadow-[0_0_10px_rgba(6,178,210,0.2)]">
-                             <Shield size={8} className="text-brand-cyan" />
-                             <span className="text-[7px] md:text-[8px] font-black text-brand-cyan tracking-wider uppercase italic">Admin Priority</span>
-                           </div>
-                         </div>
-                       )}
-                     </div>
-                     <div className="w-[1.5px] h-4 md:h-7 bg-white/10 mx-1 md:mx-2" />
-                     <button onClick={() => signOut(auth)} className="p-1.5 md:p-2 hover:bg-brand-cyan/10 rounded-lg text-brand-text-muted hover:text-brand-cyan transition-all group" title="Terminate Session">
-                       <LogOut size={14} className="md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-                     </button>
-                   </>
-                 ) : (
-                   <>
-                     <span className="uppercase tracking-widest font-black opacity-40">Local Uplink</span>
-                     <button onClick={() => signInWithPopup(auth, googleProvider)} className="ml-2 hover:text-brand-cyan transition-colors" title="Establish Cloud Sync"><LogIn size={16} /></button>
-                   </>
-                 )}
-               </div>
 
 
-            {/* Desktop only Matrix Toggle moved to a more subtle position or removed if unnecessary */}
-            
-            <button 
-              onClick={handleDeleteClick}
-              className={cn(
-                "flex items-center gap-2 p-2 border rounded-lg transition-all active:scale-95 group relative overflow-hidden",
-                isConfirmingDelete 
-                  ? "bg-red-500 text-white border-red-500 px-4" 
-                  : "border-bento-border text-brand-text-muted hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50"
-              )}
-              title={isConfirmingDelete ? "Confirm Deletion" : "Delete Analysis Node"}
-            >
-              {isConfirmingDelete ? (
-                <>
-                  <Trash2 size={16} className="animate-bounce" />
-                  <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">Confirm Wipe?</span>
-                </>
-              ) : (
-                <Trash2 size={16} className="group-hover:animate-pulse" />
-              )}
-            </button>
-          </div>
-        </div>
-      </header>
+
+
+
 
         {/* MESSAGES */}
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-3 md:p-8 custom-scrollbar scroll-smooth"
+          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 md:px-0"
         >
           <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-24">
             {hasHiddenMessages && (
@@ -2121,13 +1997,14 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-3 md:p-8 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+        <div className="p-3 md:p-8 pb-4 md:pb-8 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent">
           <div className="w-full max-w-6xl mx-auto">
             <PsychInput onSend={handleSendMessage} onMoodUpdate={setCurrentMood} disabled={isLoading} />
           </div>
         </div>
       </main>
     )}
+      </div>
 
       {/* MODAL OVERLAY - SETTINGS */}
       <AnimatePresence>
@@ -2166,292 +2043,161 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 -mr-1">
-                <div className="space-y-3 pb-6">
-                <div className="bg-bento-bg/50 p-3.5 rounded-2xl border border-bento-border group hover:border-brand-cyan/30 transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <History size={14} className="text-brand-cyan" />
-                        <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest leading-none">Save Chat History</span>
-                      </div>
-                      <p className="text-[10px] text-brand-text-muted leading-relaxed font-light">
-                        Remember your chats so you can continue them later.
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => setPreferences(prev => ({ ...prev, chatHistoryEnabled: !prev.chatHistoryEnabled }))}
-                      className={cn(
-                        "w-10 h-5 rounded-full p-0.5 transition-all duration-500 relative shrink-0",
-                        preferences.chatHistoryEnabled ? "bg-brand-cyan" : "bg-brand-text-muted/20"
-                      )}
-                    >
-                      <motion.div 
-                        className="w-4 h-4 bg-white rounded-full shadow-lg"
-                        animate={{ x: preferences.chatHistoryEnabled ? 20 : 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-bento-bg/50 p-3.5 rounded-2xl border border-bento-border group hover:border-brand-purple/30 transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <Brain size={14} className="text-brand-purple" />
-                        <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest leading-none">Enhanced Thinking</span>
-                      </div>
-                      <p className="text-[10px] text-brand-text-muted leading-relaxed font-light">
-                        Display the detailed analysis process.
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => setPreferences(prev => ({ ...prev, enhancedThinkingEnabled: !prev.enhancedThinkingEnabled }))}
-                      className={cn(
-                        "w-10 h-5 rounded-full p-0.5 transition-all duration-500 relative shrink-0",
-                        preferences.enhancedThinkingEnabled ? "bg-brand-purple" : "bg-brand-text-muted/20"
-                      )}
-                    >
-                      <motion.div 
-                        className="w-4 h-4 bg-white rounded-full shadow-lg"
-                        animate={{ x: preferences.enhancedThinkingEnabled ? 20 : 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-brand-purple/5 p-3.5 rounded-2xl border border-brand-purple/10 flex items-start gap-3">
-                  <div className="p-1.5 bg-brand-purple/10 rounded-lg text-brand-purple shrink-0 mt-0.5">
-                    <Shield size={14} />
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-bold text-brand-text block mb-0.5 uppercase tracking-widest">Privacy & Security</span>
-                    <p className="text-[10px] text-brand-text-muted leading-relaxed font-light opacity-80">
-                      Processing is local-first or sync-only via your Google Cloud instance.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-brand-cyan/5 p-3.5 rounded-2xl border border-brand-cyan/10 space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <Database size={14} className="text-brand-cyan" />
-                    <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest">Cloud Database</span>
-                  </div>
-                  <div className="space-y-2">
-
-                    <a 
-                      href="https://console.firebase.google.com/project/gen-lang-client-0067365372/firestore/databases/ai-studio-5a2650ce-574d-405d-9e89-b04738d79b13/data"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-2.5 bg-black/40 rounded-xl border border-brand-cyan/20 hover:border-brand-cyan/50 transition-all text-[10px] text-brand-text group"
-                    >
-                      <span className="font-mono">Open Firestore Console</span>
-                      <ChevronDown size={14} className="-rotate-90 text-brand-text-muted group-hover:text-brand-cyan" />
-                    </a>
-                    
-                    <div className="flex flex-col gap-1 px-1 pb-1">
-                      <div className="flex justify-between text-[9px] font-mono text-brand-text-muted">
-                        <span>Local Data Cache</span>
-                        <span className={cn((migrationDataRef.current.sessions || hasFoundSecondaryData) && "text-brand-cyan")}>
-                          {(migrationDataRef.current.sessions || hasFoundSecondaryData) ? "Detected" : "Empty"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-[9px] font-mono text-brand-text-muted">
-                        <span>Database Connection</span>
-                        <span className={cn(user && "text-brand-cyan")}>
-                          {user ? "Cloud Sync Active" : "Local Only"}
-                        </span>
-                      </div>
-                      {user && (
-                        <div className="flex justify-between text-[8px] font-mono text-brand-text-muted/60 bg-black/20 p-1.5 rounded mt-0.5 overflow-hidden">
-                          <span className="truncate mr-2">UID: {user.uid}</span>
-                          <span className="shrink-0">{user.email?.split('@')[0]}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {migrationError && (
-                      <div className="text-[9px] text-red-400 font-mono p-2 bg-red-400/10 rounded border border-red-400/20 mb-2">
-                        ERROR: {migrationError}
-                      </div>
+                {/* SETTINGS TABS */}
+                <div className="flex p-1 bg-black/20 rounded-xl mb-6 border border-white/5">
+                  <button 
+                    onClick={() => setSettingsTab('general')}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      settingsTab === 'general' ? "bg-white text-black shadow-lg" : "text-brand-text-muted hover:text-brand-text"
                     )}
+                  >
+                    General
+                  </button>
+                  <button 
+                    onClick={() => setSettingsTab('theme')}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      settingsTab === 'theme' ? "bg-white text-black shadow-lg" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    Theme
+                  </button>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => {
-                          const data = migrationDataRef.current.sessions || localStorage.getItem('psych_sessions');
-                          if (data) {
-                            const blob = new Blob([data], { type: 'application/json' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `psyche_history_backup_${Date.now()}.json`;
-                            a.click();
-                          }
-                        }}
-                        className="py-2.5 bg-black/40 hover:bg-black/60 border border-bento-border rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-text-muted transition-all"
-                      >
-                        Download Backup
-                      </button>
-
-                      <button 
-                         onClick={() => {
-                           const input = document.createElement('input');
-                           input.type = 'file';
-                           input.accept = '.json';
-                           input.onchange = async (e: any) => {
-                             const file = e.target.files[0];
-                             const reader = new FileReader();
-                             reader.onload = async (event: any) => {
-                               try {
-                                 const imported = JSON.parse(event.target.result);
-                                 if (user) {
-                                    // Manual migration to Firestore
-                                    setIsMigrating(true);
-                                    for (const [id, session] of Object.entries(imported)) {
-                                      const s = session as Session;
-                                      await setDoc(doc(db, 'users', user.uid, 'sessions', id), {
-                                        title: s.title,
-                                        createdAt: s.createdAt
-                                      });
-                                      const batch = writeBatch(db);
-                                      s.messages.forEach(m => {
-                                        batch.set(doc(db, 'users', user.uid, 'sessions', id, 'messages', m.id || crypto.randomUUID()), {
-                                          role: m.role,
-                                          parts: m.parts,
-                                          timestamp: m.timestamp || Date.now()
-                                        });
-                                      });
-                                      await batch.commit();
-                                    }
-                                    setIsMigrating(false);
-                                 } else {
-                                   localStorage.setItem('psych_sessions', JSON.stringify(imported));
-                                   setSessions(imported);
-                                   setCurrentSessionId(Object.keys(imported)[0]);
-                                 }
-                                 alert("Import Successful!");
-                               } catch (err) {
-                                 console.error("Import failed", err);
-                                 alert("Import failed: check file format");
-                               }
-                             };
-                             reader.readAsText(file);
-                           };
-                           input.click();
-                         }}
-                         className="py-2.5 bg-brand-cyan/10 hover:bg-brand-cyan/20 border border-brand-cyan/30 rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-cyan transition-all"
-                      >
-                        Import Backup
-                      </button>
+                {settingsTab === 'general' ? (
+                  <div className="space-y-3 pb-6">
+                    <div className="bg-bento-bg/50 p-3.5 rounded-2xl border border-bento-border group hover:border-brand-cyan/30 transition-all">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <History size={14} className="text-brand-cyan" />
+                            <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest leading-none">Save Chat History</span>
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed font-light">
+                            Remember your chats so you can continue them later.
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => setPreferences(prev => ({ ...prev, chatHistoryEnabled: !prev.chatHistoryEnabled }))}
+                          className={cn(
+                            "w-10 h-5 rounded-full p-0.5 transition-all duration-500 relative shrink-0",
+                            preferences.chatHistoryEnabled ? "bg-brand-cyan" : "bg-brand-text-muted/20"
+                          )}
+                        >
+                          <motion.div 
+                            className="w-4 h-4 bg-white rounded-full shadow-lg"
+                            animate={{ x: preferences.chatHistoryEnabled ? 20 : 0 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          />
+                        </button>
+                      </div>
                     </div>
 
-                      <button 
-                        onClick={() => {
-                          const allKeys = Object.keys(localStorage);
-                          const found: Record<string, Session> = {};
-                          let count = 0;
-                          
-                          allKeys.forEach(k => {
-                            if (k.includes('psych') || k.includes('session')) {
-                              try {
-                                const data = JSON.parse(localStorage.getItem(k) || "");
-                                if (typeof data === 'object') {
-                                  // Looks like a session object
-                                  Object.entries(data).forEach(([sId, s]: [string, any]) => {
-                                    if (s.messages && Array.isArray(s.messages)) {
-                                      found[sId] = s;
-                                      count++;
-                                    }
-                                  });
-                                }
-                              } catch(e) {}
-                            }
-                          });
-
-                          if (count > 0) {
-                            migrationDataRef.current.sessions = JSON.stringify(found);
-                            setHasFoundSecondaryData(true);
-                            setMigrationError(`Found ${count} historical items in secondary storage. You can now use the Restore or Retry buttons.`);
-                          } else {
-                            alert("No additional data found in browser storage.");
-                          }
-                        }}
-                        className="w-full py-2 bg-brand-text-muted/5 hover:bg-brand-text-muted/10 border border-bento-border/50 rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-text-muted transition-all mt-1"
-                      >
-                        Deep Search Browser Storage
-                      </button>
-
-                      <div className="pt-2 min-h-[40px]">
+                    <div className="bg-bento-bg/50 p-3.5 rounded-2xl border border-bento-border group hover:border-brand-purple/30 transition-all">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Brain size={14} className="text-brand-purple" />
+                            <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest leading-none">Enhanced Thinking</span>
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed font-light">
+                            Display the detailed analysis process.
+                          </p>
+                        </div>
                         <button 
-                          onClick={() => {
-                            const allKeys = Object.keys(localStorage);
-                            const found: Record<string, Session> = {};
-                            let count = 0;
-                            
-                            allKeys.forEach(k => {
-                              if (k.includes('psych') || k.includes('session')) {
-                                try {
-                                  const data = JSON.parse(localStorage.getItem(k) || "");
-                                  if (typeof data === 'object') {
-                                    Object.entries(data).forEach(([sId, s]: [string, any]) => {
-                                      if (s.messages && Array.isArray(s.messages)) {
-                                        found[sId] = s;
-                                        count++;
-                                      }
-                                    });
-                                  }
-                                } catch(e) {}
-                              }
-                            });
-
-                            if (count > 0) {
-                              migrationDataRef.current.sessions = JSON.stringify(found);
-                              setHasFoundSecondaryData(true);
-                              setMigrationError(`Found ${count} historical items. You can now use the Restore button.`);
-                            } else {
-                              alert("No additional data found in browser storage.");
-                            }
-                          }}
-                          className="w-full py-2 bg-brand-text-muted/5 hover:bg-brand-text-muted/10 border border-bento-border/50 rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-text-muted transition-all mb-4"
+                          onClick={() => setPreferences(prev => ({ ...prev, enhancedThinkingEnabled: !prev.enhancedThinkingEnabled }))}
+                          className={cn(
+                            "w-10 h-5 rounded-full p-0.5 transition-all duration-500 relative shrink-0",
+                            preferences.enhancedThinkingEnabled ? "bg-brand-purple" : "bg-brand-text-muted/20"
+                          )}
                         >
-                          Deep Search Browser Storage
+                          <motion.div 
+                            className="w-4 h-4 bg-white rounded-full shadow-lg"
+                            animate={{ x: preferences.enhancedThinkingEnabled ? 20 : 0 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          />
                         </button>
+                      </div>
+                    </div>
 
-                        {(migrationDataRef.current.sessions || hasFoundSecondaryData) && !isMigrating ? (
-                          <div className="flex flex-col gap-2">
-                            {user ? (
-                              <button 
-                                onClick={async () => {
-                                  if (!migrationDataRef.current.sessions) {
-                                    alert("No data cached in memory. Try Deep Search first.");
-                                    return;
-                                  }
-                                  setMigrationError(null);
-                                  setIsMigrating(true);
-                                  
+                    <div className="bg-brand-purple/5 p-3.5 rounded-2xl border border-brand-purple/10 flex items-start gap-3">
+                      <div className="p-1.5 bg-brand-purple/10 rounded-lg text-brand-purple shrink-0 mt-0.5">
+                        <Shield size={14} />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-brand-text block mb-0.5 uppercase tracking-widest">Privacy & Security</span>
+                        <p className="text-[10px] text-brand-text-muted leading-relaxed font-light opacity-80">
+                          Processing is local-first or sync-only via your Google Cloud instance.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-brand-cyan/5 p-3.5 rounded-2xl border border-brand-cyan/10 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <Database size={14} className="text-brand-cyan" />
+                        <span className="text-[11px] font-bold text-brand-text uppercase tracking-widest">Cloud Database</span>
+                      </div>
+                      <div className="space-y-2">
+                        <a 
+                          href="https://console.firebase.google.com/project/gen-lang-client-0067365372/firestore/databases/ai-studio-5a2650ce-574d-405d-9e89-b04738d79b13/data"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2.5 bg-black/40 rounded-xl border border-brand-cyan/20 hover:border-brand-cyan/50 transition-all text-[10px] text-brand-text group"
+                        >
+                          <span className="font-mono">Open Firestore Console</span>
+                          <ChevronDown size={14} className="-rotate-90 text-brand-text-muted group-hover:text-brand-cyan" />
+                        </a>
+                        
+                        <div className="flex flex-col gap-1 px-1 pb-1">
+                          <div className="flex justify-between text-[9px] font-mono text-brand-text-muted">
+                            <span>Local Data Cache</span>
+                            <span className={cn((migrationDataRef.current.sessions || hasFoundSecondaryData) && "text-brand-cyan")}>
+                              {(migrationDataRef.current.sessions || hasFoundSecondaryData) ? "Detected" : "Empty"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => {
+                              const data = migrationDataRef.current.sessions || localStorage.getItem('psych_sessions');
+                              if (data) {
+                                const blob = new Blob([data], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `psyche_history_backup_${Date.now()}.json`;
+                                a.click();
+                              }
+                            }}
+                            className="py-2.5 bg-black/40 hover:bg-black/60 border border-bento-border rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-text-muted transition-all"
+                          >
+                            Backup
+                          </button>
+
+                          <button 
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = '.json';
+                              input.onchange = async (e: any) => {
+                                const file = e.target.files[0];
+                                const reader = new FileReader();
+                                reader.onload = async (event: any) => {
                                   try {
-                                    const imported = JSON.parse(migrationDataRef.current.sessions);
-                                    let successCount = 0;
-                                    const sessionEntries = Object.entries(imported);
-                                    
-                                    if (sessionEntries.length === 0) {
-                                      alert("Stored data is empty.");
-                                      return;
-                                    }
-
-                                    for (const [id, session] of sessionEntries) {
-                                      const s = session as Session;
-                                      await setDoc(doc(db, 'users', user.uid, 'sessions', id), {
-                                        title: s.title || "Restored Session",
-                                        createdAt: s.createdAt || Date.now()
-                                      });
-                                      
-                                      const batch = writeBatch(db);
-                                      if (s.messages && Array.isArray(s.messages)) {
+                                    const imported = JSON.parse(event.target.result);
+                                    if (user) {
+                                      setIsMigrating(true);
+                                      for (const [id, session] of Object.entries(imported)) {
+                                        const s = session as Session;
+                                        await setDoc(doc(db, 'users', user.uid, 'sessions', id), {
+                                          title: s.title,
+                                          createdAt: s.createdAt
+                                        });
+                                        const batch = writeBatch(db);
                                         s.messages.forEach(m => {
-                                          batch.set(doc(db, 'users', user.uid, 'sessions', id, 'messages', m.id || generateId()), {
+                                          batch.set(doc(db, 'users', user.uid, 'sessions', id, 'messages', m.id || crypto.randomUUID()), {
                                             role: m.role,
                                             parts: m.parts,
                                             timestamp: m.timestamp || Date.now()
@@ -2459,102 +2205,93 @@ export default function App() {
                                         });
                                         await batch.commit();
                                       }
-                                      successCount++;
+                                      setIsMigrating(false);
+                                    } else {
+                                      localStorage.setItem('psych_sessions', JSON.stringify(imported));
+                                      setSessions(imported);
                                     }
-                                    
-                                    alert(`Successfully synced ${successCount} sessions to your cloud account. They will appear in your sidebar shortly.`);
-                                    migrationDataRef.current.sessions = null;
-                                    setHasFoundSecondaryData(false);
-                                    localStorage.removeItem('psych_sessions');
+                                    alert("Import Successful!");
                                   } catch (err) {
-                                    console.error("Sync failed", err);
-                                    alert("Sync failed: " + (err instanceof Error ? err.message : "Invalid data format"));
-                                    setMigrationError("Sync failed: " + (err instanceof Error ? err.message : String(err)));
-                                  } finally {
-                                    setIsMigrating(false);
+                                    console.error("Import failed", err);
                                   }
-                                }}
-                                className="w-full py-2.5 bg-brand-cyan/20 hover:bg-brand-cyan/30 border border-brand-cyan/40 rounded-xl text-[10px] font-bold uppercase tracking-widest text-brand-cyan transition-all shadow-lg"
-                              >
-                                Sync Found Data to Cloud ({JSON.parse(migrationDataRef.current.sessions || '{}') ? Object.keys(JSON.parse(migrationDataRef.current.sessions || '{}')).length : 0} items)
-                              </button>
-                            ) : (
-                              <div className="text-[9px] text-center text-brand-cyan/80 mb-1 font-mono uppercase bg-brand-cyan/5 p-2 rounded border border-brand-cyan/10">
-                                Log in to sync this data to cloud
-                              </div>
-                            )}
-                            
-                            <button 
-                              onClick={() => {
-                                const sessionsToRestore = migrationDataRef.current.sessions || localStorage.getItem('psych_sessions');
-                                if (!sessionsToRestore || sessionsToRestore === "{}" || sessionsToRestore === "null") {
-                                  alert("No valid data found to restore. Try 'Deep Search' first.");
-                                  return;
-                                }
-
-                                try {
-                                  const parsed = JSON.parse(sessionsToRestore);
-                                  const sessionCount = Object.keys(parsed).length;
-                                  
-                                  if (sessionCount === 0) {
-                                    alert("No sessions found in the selected storage.");
-                                    return;
-                                  }
-
-                                  if (user) {
-                                    const confirmMerge = window.confirm(`Found ${sessionCount} sessions. Restoring will MERGE them into your current list. Proceed?`);
-                                    if (!confirmMerge) return;
-                                  }
-                                  
-                                  setSessions(prev => {
-                                    const merged = {...prev, ...parsed};
-                                    localStorage.setItem('psych_sessions', JSON.stringify(merged));
-                                    
-                                    // Auto-select the first one from imported
-                                    const firstKey = Object.keys(parsed)[0];
-                                    if (firstKey) {
-                                      setTimeout(() => {
-                                        setCurrentSessionId(firstKey);
-                                        setIsSettingsOpen(false);
-                                      }, 100);
-                                    }
-                                    return merged;
-                                  });
-                                  
-                                  alert(`Success: ${sessionCount} historical sessions merged.`);
-                                } catch (e) {
-                                  console.error("Restore failed", e);
-                                  alert("Restore failed: Data format error.");
-                                }
-                              }}
-                              className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-[9px] font-bold uppercase tracking-widest text-amber-500 transition-all font-mono"
-                            >
-                              Emergency Restore to Sidebar
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 opacity-20 text-[9px] font-mono tracking-widest uppercase">
-                            No secondary data found
-                          </div>
-                        )}
+                                };
+                                reader.readAsText(file);
+                              };
+                              input.click();
+                            }}
+                            className="py-2.5 bg-brand-cyan/10 hover:bg-brand-cyan/20 border border-brand-cyan/30 rounded-xl text-[9px] font-bold uppercase tracking-widest text-brand-cyan transition-all"
+                          >
+                            Restore
+                          </button>
+                        </div>
                       </div>
-
                     </div>
                   </div>
+                ) : (
+                  <div className="space-y-6 pb-6 pt-2">
+                    <div className="px-1">
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-text-muted mb-6 flex items-center gap-2">
+                        <Palette size={14} className="text-brand-purple" /> Appearance Matrix
+                      </h3>
+                      <div className="grid grid-cols-1 gap-3">
+                        {THEMES.map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => setTheme(t.id)}
+                            className={cn(
+                              "w-full flex items-center gap-4 p-4 rounded-2xl transition-all border group relative overflow-hidden",
+                              theme === t.id 
+                                ? "bg-white/10 border-brand-cyan/40 shadow-[0_0_20px_rgba(6,178,210,0.1)]" 
+                                : "bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/5"
+                            )}
+                          >
+                            <div 
+                              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg"
+                              style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }}
+                            >
+                              {theme === t.id && <Check size={18} className="text-white drop-shadow-md" />}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <div className={cn(
+                                "text-sm font-bold tracking-tight transition-colors",
+                                theme === t.id ? "text-brand-cyan" : "text-brand-text"
+                              )}>
+                                {t.label}
+                              </div>
+                              <div className="text-[10px] text-brand-text-muted font-mono opacity-40 uppercase tracking-widest">
+                                {t.id} model
+                              </div>
+                            </div>
+                            {theme === t.id && (
+                              <motion.div layoutId="active-theme" className="absolute right-4">
+                                <Sparkles size={16} className="text-brand-cyan animate-pulse" />
+                              </motion.div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                <div className="flex items-center justify-between px-2 pt-2 border-t border-bento-border/50">
-                  <div className="flex items-center gap-2 text-[10px] text-brand-text-muted font-mono">
-                    <Lock size={12} className="text-brand-cyan animate-pulse" />
-                    <span className="tracking-tighter uppercase opacity-50">Core Security Protocol v4.0.1</span>
+                    <div className="bg-brand-cyan/5 p-4 rounded-2xl border border-brand-cyan/10">
+                      <p className="text-[10px] text-brand-cyan/60 italic leading-relaxed text-center">
+                        Synthesizing UI components and neuro-linguistic visual patterns...
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <div className="w-1 h-1 rounded-full bg-brand-cyan" />
-                    <div className="w-1 h-1 rounded-full bg-brand-purple animate-pulse" />
-                    <div className="w-1 h-1 rounded-full bg-brand-cyan" />
-                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between px-2 pt-2 border-t border-bento-border/50">
+                <div className="flex items-center gap-2 text-[10px] text-brand-text-muted font-mono">
+                  <Lock size={12} className="text-brand-cyan animate-pulse" />
+                  <span className="tracking-tighter uppercase opacity-50">Core Security Protocol v4.0.1</span>
+                </div>
+                <div className="flex gap-1">
+                  <div className="w-1 h-1 rounded-full bg-brand-cyan" />
+                  <div className="w-1 h-1 rounded-full bg-brand-purple animate-pulse" />
+                  <div className="w-1 h-1 rounded-full bg-brand-cyan" />
                 </div>
               </div>
-            </div>
 
               <div className="mt-8">
                 <button 

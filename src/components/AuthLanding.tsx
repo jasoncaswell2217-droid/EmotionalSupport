@@ -80,16 +80,16 @@ export function AuthLanding({ onGuestMode }: AuthLandingProps) {
           animate={{ opacity: 1, x: 0 }}
           className="space-y-8"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-2xl shadow-brand-cyan/20 ring-1 ring-white/10 shrink-0">
-              <Brain size={24} className="md:hidden text-white" />
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-2xl shadow-brand-cyan/20 ring-1 ring-white/10 shrink-0">
+              <Brain size={20} className="md:hidden text-white" />
               <Brain size={36} className="hidden md:block text-white" />
             </div>
             <div>
-              <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+              <h1 className="text-2xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
                 My Psych <span className="text-brand-cyan">Lens</span>
               </h1>
-              <p className="text-brand-text-muted text-[10px] md:text-sm uppercase tracking-[0.4em] font-black mt-2 opacity-50">
+              <p className="text-[8px] md:text-sm text-brand-text-muted uppercase tracking-[0.4em] font-black mt-2 opacity-50">
                 Advanced Analytical Matrix v1.2
               </p>
             </div>
