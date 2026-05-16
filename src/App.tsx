@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, UserPlus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile, Heading1, ListOrdered, Minus } from 'lucide-react';
+import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, UserPlus, History, MessageSquare, Palette, Check, Trash2, PanelLeftClose, PanelLeft, Settings, X, Shield, Lock, ChevronDown, ChevronLeft, LogIn, LogOut, Cloud, ImageIcon, MousePointer2, CreditCard, TrendingUp, TrendingDown, Sparkles, BookOpen, Bold, Italic, List, Smile, Heading1, ListOrdered, Minus, Menu, Search } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
@@ -560,6 +560,21 @@ export default function App() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const desktop = window.innerWidth >= 1024;
+      setIsDesktop(desktop);
+      if (!desktop) {
+        setIsSidebarExpanded(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const chatInstance = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1052,10 +1067,18 @@ export default function App() {
       {/* GLOBAL TOP NAVIGATION */}
       <header className="h-16 border-b border-bento-border bg-bento-bg z-50 shrink-0 px-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-4 shrink-0">
+          {!isDesktop && (
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-xl text-brand-text-muted transition-colors"
+            >
+              <Menu size={22} />
+            </button>
+          )}
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-cyan to-brand-purple flex items-center justify-center shadow-lg shadow-brand-cyan/20 shrink-0">
             <Brain size={22} className="text-white" />
           </div>
-          <div className="hidden md:flex flex-col">
+          <div className="hidden sm:flex flex-col">
             <h1 className="font-display font-bold text-lg tracking-tight bg-gradient-to-r from-brand-text to-brand-text-muted bg-clip-text text-transparent italic whitespace-nowrap leading-none">My Psych Lens</h1>
             <span className="text-[8px] font-mono opacity-30 uppercase tracking-[0.2em] mt-0.5">Matrix v1.2.8</span>
           </div>
@@ -1063,70 +1086,57 @@ export default function App() {
 
         {/* VIEW SWITCHER */}
         <div className="flex-1 flex items-center justify-center mx-2 md:mx-4 overflow-hidden">
-          <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
-            {user && (
-              <>
-                <button 
-                  onClick={() => {
-                    setCurrentView('chat');
-                  }}
-                  className={cn(
-                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                    currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    setCurrentView('history');
-                  }}
-                  className={cn(
-                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                    currentView === 'history' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <History size={14} /> <span className="hidden sm:inline">Chats</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    setCurrentView('analytics');
-                  }}
-                  className={cn(
-                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                    currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
-                </button>
-              </>
-            )}
-            <button 
-              onClick={() => {
-                setCurrentView('how-it-works');
-              }}
-              className={cn(
-                "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                currentView === 'how-it-works' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-              )}
-            >
-              <BookOpen size={14} /> <span className="hidden lg:inline">How It Works</span>
-            </button>
-            
-            {role === 'admin' && (
+          {isDesktop && user && (
+            <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
               <button 
                 onClick={() => {
-                  setCurrentView('admin');
+                  setCurrentView('chat');
                 }}
                 className={cn(
                   "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                  currentView === 'admin' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
                 )}
               >
-                <Shield size={14} /> <span className="hidden sm:inline">Admin</span>
+                <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
               </button>
-            )}
-          </div>
+              <button 
+                onClick={() => {
+                  setCurrentView('analytics');
+                }}
+                className={cn(
+                  "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                  currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                )}
+              >
+                <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setCurrentView('how-it-works');
+                }}
+                className={cn(
+                  "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                  currentView === 'how-it-works' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                )}
+              >
+                <BookOpen size={14} /> <span className="hidden lg:inline">How It Works</span>
+              </button>
+              
+              {role === 'admin' && (
+                <button 
+                  onClick={() => {
+                    setCurrentView('admin');
+                  }}
+                  className={cn(
+                    "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                    currentView === 'admin' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  )}
+                >
+                  <Shield size={14} /> <span className="hidden sm:inline">Admin</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:gap-4 shrink-0 px-2">
@@ -1201,8 +1211,276 @@ export default function App() {
       </header>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Main Content Areas */}
-        {currentView === 'admin' && role === 'admin' && (
+        {/* DESKTOP SIDEBAR */}
+        <AnimatePresence mode="wait">
+          {isDesktop && user && (
+            <motion.aside
+              initial={false}
+              animate={{ width: isSidebarExpanded ? 280 : 70 }}
+              className="bg-bento-bg border-r border-bento-border flex flex-col z-40 relative shrink-0"
+            >
+              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                {isSidebarExpanded && (
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-[10px] font-black uppercase tracking-[0.25em] text-brand-text-muted"
+                  >
+                    Archive
+                  </motion.span>
+                )}
+                <button 
+                  onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-brand-text-muted transition-colors mx-auto lg:mx-0"
+                >
+                  {isSidebarExpanded ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar py-4 px-2 space-y-2">
+                <button 
+                  onClick={createNewSession}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-2xl transition-all border border-brand-cyan/20 bg-brand-cyan/5 text-brand-cyan hover:bg-brand-cyan/10 active:scale-95",
+                    !isSidebarExpanded && "justify-center px-0"
+                  )}
+                >
+                  <Plus size={20} />
+                  {isSidebarExpanded && <span className="text-xs font-black uppercase tracking-widest">New Session</span>}
+                </button>
+
+                <div className="pt-4 space-y-1">
+                  {Object.values(sessions).sort((a,b) => b.createdAt - a.createdAt).map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => {
+                        setCurrentSessionId(session.id);
+                        setCurrentView('chat');
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-3 rounded-2xl transition-all relative group cursor-pointer",
+                        currentSessionId === session.id 
+                          ? "bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20" 
+                          : "text-brand-text-muted hover:bg-white/5",
+                        !isSidebarExpanded && "justify-center px-0"
+                      )}
+                    >
+                      <MessageSquare size={18} className={cn("shrink-0", currentSessionId === session.id ? "text-brand-cyan" : "text-brand-text-muted/40")} />
+                      
+                      {isSidebarExpanded && (
+                        <div className="flex-1 text-left min-w-0">
+                          <div className="text-[13px] font-bold truncate">{session.title}</div>
+                          <div className="text-[9px] font-mono opacity-40 uppercase">{new Date(session.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      )}
+
+                      {isSidebarExpanded && (
+                        <button 
+                          onClick={(e) => deleteSession(e, session.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:text-rose-500 transition-all shrink-0 z-10"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+
+                      {currentSessionId === session.id && (
+                        <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-cyan rounded-r-full" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="p-4 border-t border-white/5">
+                 <div className={cn("flex flex-col gap-4", !isSidebarExpanded ? "items-center" : "")}>
+                   <button 
+                     onClick={() => setIsSettingsOpen(true)}
+                     className={cn(
+                       "flex items-center gap-4 text-brand-text-muted hover:text-brand-text transition-all",
+                       !isSidebarExpanded && "justify-center"
+                     )}
+                   >
+                     <Settings size={20} />
+                     {isSidebarExpanded && <span className="text-[11px] font-black uppercase tracking-widest">Config</span>}
+                   </button>
+                   {isSidebarExpanded && userProfile && (
+                     <div className="bg-white/5 rounded-2xl p-4 space-y-2">
+                        <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-brand-text-muted">
+                           <span>Uplink Status</span>
+                           <span className="text-brand-cyan">{userProfile.credits ?? 0}</span>
+                        </div>
+                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                           <div 
+                             className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
+                             style={{ width: `${Math.min(100, ((userProfile.credits ?? 0) / (userProfile.maxCredits || 5)) * 100)}%` }}
+                           />
+                        </div>
+                     </div>
+                   )}
+                 </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* MOBILE DRAWER */}
+        <AnimatePresence>
+          {!isDesktop && isMobileMenuOpen && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+              />
+              <motion.aside
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed left-0 top-0 bottom-0 w-[85%] max-w-[320px] bg-bento-bg border-r border-bento-border z-[70] flex flex-col"
+              >
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <History size={20} className="text-brand-cyan" />
+                      <span className="text-sm font-black uppercase tracking-widest text-brand-text">Session Archive</span>
+                   </div>
+                   <button 
+                     onClick={() => setIsMobileMenuOpen(false)}
+                     className="p-2 hover:bg-white/5 rounded-xl text-brand-text-muted"
+                   >
+                     <X size={20} />
+                   </button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* MOBILE NAV LINKS */}
+                  <div className="grid grid-cols-2 gap-3 pb-6 border-b border-white/5">
+                    <button 
+                      onClick={() => {
+                        setCurrentView('chat');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                        currentView === 'chat' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-white/5 border-white/5 text-brand-text-muted"
+                      )}
+                    >
+                      <MessageSquare size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Engine</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setCurrentView('analytics');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                        currentView === 'analytics' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-white/5 border-white/5 text-brand-text-muted"
+                      )}
+                    >
+                      <BarChart3 size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Analytics</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setCurrentView('how-it-works');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                        currentView === 'how-it-works' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-white/5 border-white/5 text-brand-text-muted"
+                      )}
+                    >
+                      <BookOpen size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Guide</span>
+                    </button>
+                    {role === 'admin' && (
+                      <button 
+                        onClick={() => {
+                          setCurrentView('admin');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                          currentView === 'admin' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-white/5 border-white/5 text-brand-text-muted"
+                        )}
+                      >
+                        <Shield size={20} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Admin</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      createNewSession();
+                      setIsMobileMenuOpen(false);
+                      setCurrentView('chat');
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-brand-cyan text-black font-black uppercase tracking-widest text-xs shadow-lg shadow-brand-cyan/20"
+                  >
+                    <Plus size={20} /> New Analysis
+                  </button>
+
+                  <div className="pt-4 space-y-2">
+                    {Object.values(sessions).sort((a,b) => b.createdAt - a.createdAt).map((session) => (
+                      <div
+                        key={session.id}
+                        onClick={() => {
+                          setCurrentSessionId(session.id);
+                          setCurrentView('chat');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-4 p-4 rounded-2xl transition-all border cursor-pointer",
+                          currentSessionId === session.id 
+                            ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan" 
+                            : "bg-white/5 border-white/5 text-brand-text-muted"
+                        )}
+                      >
+                        <MessageSquare size={18} className={currentSessionId === session.id ? "text-brand-cyan" : "text-brand-text-muted/40"} />
+                        <div className="flex-1 text-left min-w-0">
+                          <div className="text-[14px] font-bold truncate">{session.title}</div>
+                          <div className="text-[10px] font-mono opacity-40 uppercase">{new Date(session.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <button 
+                          onClick={(e) => deleteSession(e, session.id)}
+                          className="p-2 hover:text-rose-500 transition-all z-10"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-white/5 space-y-4">
+                  <button 
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-4 text-brand-text-muted hover:text-brand-text transition-all text-[11px] font-black uppercase tracking-widest"
+                  >
+                    <Settings size={20} /> Configuration
+                  </button>
+                  <button 
+                    onClick={() => signOut(auth)}
+                    className="flex items-center gap-4 text-rose-500/60 hover:text-rose-500 transition-all text-[11px] font-black uppercase tracking-widest"
+                  >
+                    <LogOut size={20} /> Secure Exit
+                  </button>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Main Content Areas */}
+          {currentView === 'admin' && role === 'admin' && (
         <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
           <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -2282,16 +2560,16 @@ export default function App() {
         </main>
       )}
 
-      {/* ANALYTICS VIEW */}
-      {currentView === 'analytics' && (
-        <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-6 md:p-12 overflow-y-auto custom-scrollbar">
-          <div className="max-w-6xl mx-auto w-full space-y-12 pb-24">
-            <header className="flex flex-col gap-2">
-              <h1 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-brand-text italic">
-                Neural <span className="text-brand-purple">Diagnostics</span>
-              </h1>
-              <p className="text-brand-text-muted font-light text-lg">Comprehensive behavioral matrix and semantic analysis results.</p>
-            </header>
+        {/* ANALYTICS VIEW */}
+        {currentView === 'analytics' && (
+          <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 lg:p-12 overflow-y-auto no-scrollbar">
+            <div className="max-w-6xl mx-auto w-full space-y-8 lg:space-y-12 pb-24">
+              <header className="flex flex-col gap-2">
+                <h1 className="text-3xl lg:text-5xl font-display font-black tracking-tighter text-brand-text italic leading-none">
+                  Neural <span className="text-brand-purple">Diagnostics</span>
+                </h1>
+                <p className="text-brand-text-muted font-light text-sm lg:text-lg">Comprehensive behavioral matrix results.</p>
+              </header>
 
             {/* DASHBOARD GRID */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -2421,43 +2699,45 @@ export default function App() {
         </main>
       )}
 
-      {/* MAIN CONTENT - CHAT AREA */}
-      {currentView === 'chat' && (
-        <main className="flex-1 flex flex-col relative overflow-hidden">
-          {/* Credit Meter (Subtle and Sticky) */}
-          {user && userProfile && (
-            <div className="z-30 w-full bg-black/20 border-b border-white/5 px-4 md:px-8 py-2 flex items-center justify-between gap-4 backdrop-blur-md shrink-0">
-               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
-                 <CreditCard size={12} className="text-brand-cyan drop-shadow-[0_0_5px_var(--theme-accent-1)]" />
-                 <span className="hidden xs:inline">Neural Uplink:</span> 
-                 <span className="text-brand-cyan font-black drop-shadow-[0_0_8px_rgba(0,242,255,0.4)]">
-                   {(role === 'admin' && !systemSettings.adminCreditsEnabled) 
-                     ? 'Unlimited Access' 
-                     : `${userProfile.credits ?? 0} Neural Credits`}
-                 </span>
-               </div>
-               <div className="flex-1 max-w-[200px] h-2 bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/10 ring-1 ring-brand-cyan/20">
-                 <motion.div 
-                   initial={{ width: 0 }}
-                   animate={{ 
-                     width: (role === 'admin' && !systemSettings.adminCreditsEnabled) 
-                       ? '100%' 
-                       : `${Math.max(0, Math.min(100, ((userProfile.credits ?? 0) / (userProfile.maxCredits || 5)) * 100))}%` 
-                   }}
-                   className="h-full bg-gradient-to-r from-brand-cyan via-brand-cyan to-brand-purple shadow-[0_0_15px_var(--theme-accent-1)] rounded-full relative overflow-hidden"
-                 >
-                    <motion.div 
-                      animate={{ x: ['100%', '-100%'] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/2"
-                    />
-                 </motion.div>
-               </div>
-               <div className="hidden sm:block text-[9px] font-mono text-brand-text-muted opacity-40 uppercase tracking-tighter">
-                 Matrix Tier: <span className="text-brand-text">{role === 'admin' ? 'Administrative Core' : (userProfile.plan === 'free' ? 'Neural Baseline FREE' : userProfile.plan)}</span>
-               </div>
-            </div>
-          )}
+        {/* MAIN CONTENT - CHAT AREA */}
+        {currentView === 'chat' && (
+          <main className="flex-1 flex flex-col relative overflow-hidden min-w-0">
+            {/* Credit Meter (Subtle and Sticky) */}
+            {user && userProfile && (
+              <div className="z-30 w-full bg-black/20 border-b border-white/5 px-4 lg:px-8 py-2 flex items-center justify-between gap-4 backdrop-blur-md shrink-0">
+                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
+                   <CreditCard size={12} className="text-brand-cyan drop-shadow-[0_0_5px_var(--theme-accent-1)]" />
+                   <span className="hidden xs:inline">Neural Uplink:</span> 
+                   <span className="text-brand-cyan font-black drop-shadow-[0_0_8px_rgba(0,242,255,0.4)]">
+                     {(role === 'admin' && !systemSettings.adminCreditsEnabled) 
+                       ? 'Unlimited Access' 
+                       : `${userProfile.credits ?? 0} Neural Credits`}
+                   </span>
+                 </div>
+                 <div className="flex-1 max-w-[200px] h-2 bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/10 ring-1 ring-brand-cyan/20">
+                   <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ 
+                       width: (role === 'admin' && !systemSettings.adminCreditsEnabled) 
+                         ? '100%' 
+                         : `${Math.max(0, Math.min(100, ((userProfile.credits ?? 0) / (userProfile.maxCredits || 5)) * 100))}%` 
+                     }}
+                     className="h-full bg-gradient-to-r from-brand-cyan via-brand-cyan to-brand-purple shadow-[0_0_15px_var(--theme-accent-1)] rounded-full relative overflow-hidden"
+                   >
+                      <motion.div 
+                        animate={{ x: ['100%', '-100%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/2"
+                      />
+                   </motion.div>
+                 </div>
+                 {!isDesktop && (
+                   <div className="hidden sm:block text-[9px] font-mono text-brand-text-muted opacity-40 uppercase tracking-tighter">
+                     Matrix Tier: <span className="text-brand-text">{role === 'admin' ? 'Administrative Core' : (userProfile.plan === 'free' ? 'Neural Baseline FREE' : userProfile.plan)}</span>
+                   </div>
+                 )}
+              </div>
+            )}
         {/* Background Depth Flare */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
           <div className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,var(--theme-accent-1)_0%,transparent_70%)] blur-[120px]" />
@@ -2473,9 +2753,9 @@ export default function App() {
         {/* MESSAGES */}
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 md:px-0 scroll-smooth"
+          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 scroll-smooth"
         >
-          <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-32 pt-6">
+          <div className="w-full max-w-4xl mx-auto space-y-6 lg:space-y-12 pb-32 pt-6">
             {/* Global Disclaimer */}
             <AnimatePresence>
               {shouldShowDisclaimer && (
@@ -2655,8 +2935,8 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-3 md:p-8 pb-10 md:pb-12 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent relative mt-auto">
-          <div className="w-full max-w-6xl mx-auto mb-[env(safe-area-inset-bottom)]">
+        <div className="p-4 lg:p-8 pb-10 lg:pb-12 pt-0 z-20 shrink-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent relative mt-auto">
+          <div className="w-full max-w-4xl mx-auto mb-[env(safe-area-inset-bottom)]">
             <PsychInput onSend={handleSendMessage} onMoodUpdate={setCurrentMood} disabled={isLoading} />
           </div>
         </div>
@@ -2759,6 +3039,7 @@ export default function App() {
       </main>
     )}
   </div>
+</div>
 
       {/* MODAL OVERLAY - SETTINGS */}
       <AnimatePresence>

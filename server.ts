@@ -9,43 +9,88 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Gemini setup
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
+// Gemini setup helper
+let aiClient: any = null;
+function getAi() {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-});
+  return aiClient;
+}
 
 app.use(express.json());
 
 // API routes
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    hasKey: !!process.env.GEMINI_API_KEY,
+    keyLength: process.env.GEMINI_API_KEY?.length || 0
+  });
+});
+
 app.post("/api/gemini/chat", async (req, res) => {
   const { history, message, systemInstruction, tools } = req.body;
   
-  if (!process.env.GEMINI_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("GEMINI_API_KEY is missing from environment variables.");
     return res.status(500).json({ 
-      error: "GEMINI_API_KEY is not set on the server. Please check Settings > Secrets." 
+      error: {
+        message: "GEMINI_API_KEY is not set on the server. Please check Settings > Secrets.",
+        status: 500
+      }
     });
   }
 
   try {
-    const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+    const modelName = "gemini-3-flash-preview";
+    console.log(`Calling Gemini API [${modelName}] - Message Length: ${message?.length}`);
+    
+    const ai = getAi();
+    
+    // Using generateContent with history as part of contents for maximum compatibility
+    const contents = [
+      ...(history || []).map((h: any) => ({
+        role: h.role === 'model' ? 'model' : 'user',
+        parts: h.parts.map((p: any) => p.text ? { text: p.text } : p)
+      })),
+      { role: 'user', parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents,
       config: {
         systemInstruction,
         temperature: 0.7,
         tools: tools ? [{ functionDeclarations: tools }] : undefined
-      },
-      history: history && history.length > 0 ? history : undefined,
+      }
     });
 
-    const response = await chat.sendMessage({ message });
-    res.json(response);
+    // We must return a structure that the client expects
+    // Extracting the pure JSON version of the response
+    res.json({
+      candidates: response.candidates,
+      usageMetadata: response.usageMetadata
+    });
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini API Error Detail:", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+      details: error.details,
+      apiKeyPresent: !!process.env.GEMINI_API_KEY
+    });
+    
     res.status(error.status || 500).json({ 
       error: {
         message: error.message || "Failed to communicate with Gemini API",
