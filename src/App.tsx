@@ -2762,9 +2762,9 @@ export default function App() {
         {/* MESSAGES */}
         <div 
           ref={scrollRef}
-          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 scroll-smooth"
+          className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-2 md:px-4 scroll-smooth"
         >
-          <div className="w-full max-w-4xl mx-auto space-y-6 lg:space-y-12 pb-32 pt-6">
+          <div className="w-full max-w-4xl mx-auto space-y-6 lg:space-y-12 pb-32 pt-6 overflow-x-hidden">
             {/* Global Disclaimer */}
             <AnimatePresence>
               {shouldShowDisclaimer && (

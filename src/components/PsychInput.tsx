@@ -179,7 +179,7 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
 
         {/* Input Bar Pill */}
         <div className={cn(
-          "flex-1 flex items-end bg-white/10 md:bg-black/60 backdrop-blur-xl border rounded-[24px] md:rounded-[32px] px-4 md:px-6 py-1 md:py-2 transition-all duration-300 group",
+          "flex-1 min-w-0 flex items-end bg-white/10 md:bg-black/60 backdrop-blur-xl border rounded-[24px] md:rounded-[32px] px-3 md:px-6 py-1 md:py-2 transition-all duration-300 group",
           isFocused ? "border-brand-cyan/60 shadow-[0_0_30px_rgba(6,178,210,0.2)] ring-1 ring-brand-cyan/30 bg-white/15" : "border-white/25 md:border-white/15"
         )}>
           <textarea

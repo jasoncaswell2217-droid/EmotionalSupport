@@ -60,7 +60,7 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "flex w-full mb-8 gap-3 md:gap-4 px-2 md:px-0",
+        "flex w-full max-w-full mb-8 gap-2 md:gap-4 px-1 md:px-0",
         isUser ? "flex-row-reverse" : "flex-row"
       )}
     >
@@ -70,11 +70,11 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
           ? "bg-brand-text-muted/10 border-bento-border text-brand-text-muted" 
           : "bg-brand-cyan/10 border-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_var(--theme-accent-1)]"
       )}>
-        {isUser ? <User size={20} /> : <Brain size={20} />}
+        {isUser ? <User size={18} className="md:w-5 md:h-5" /> : <Brain size={18} className="md:w-5 md:h-5" />}
       </div>
 
       <div className={cn(
-        "flex-1 rounded-2xl flex flex-col gap-3",
+        "flex-1 min-w-0 rounded-2xl flex flex-col gap-3",
         isUser 
           ? "items-end" 
           : "items-start"
@@ -107,13 +107,13 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
             }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className={cn(
-              "max-w-full rounded-2xl shadow-2xl relative overflow-hidden",
+              "max-w-full w-fit max-w-[95%] md:max-w-full rounded-2xl shadow-2xl relative overflow-hidden",
               isCollapsed && "pointer-events-none",
               isUser ? "bg-brand-text-muted/5 text-brand-text border border-bento-border rounded-tr-none" 
                      : "bg-bento-card border border-bento-border rounded-tl-none"
             )}
           >
-            <div className="p-4 md:p-5 lg:p-8">
+            <div className="p-3 md:p-5 lg:p-8 w-full overflow-hidden">
               {images.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-6 w-full">
                   {images.map((img, idx) => (
@@ -126,8 +126,8 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
 
               {content && (
                 <div className={cn(
-                  "prose prose-brand max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 text-[14px] md:text-[15.5px] tracking-wide text-brand-text break-words",
-                  "!text-brand-text" // Force color to match theme
+                  "prose prose-brand max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 text-[13px] md:text-[15.5px] tracking-wide text-brand-text break-words overflow-x-hidden",
+                  "!text-brand-text w-full" // Force color to match theme
                 )}>
                   <ReactMarkdown>{displayContent || ""}</ReactMarkdown>
                   

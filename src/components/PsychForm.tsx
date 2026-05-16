@@ -52,8 +52,8 @@ export function PsychForm({ header, rationale, questions, onSubmit, isLoading }:
         className="space-y-5"
       >
         {questions.map((q) => (
-          <div key={q.id} className="space-y-1.5">
-            <label className="text-[11px] font-semibold text-brand-text-muted/80 ml-1">{q.label}</label>
+          <div key={q.id} className="space-y-1.5 min-w-0">
+            <label className="text-[11px] font-semibold text-brand-text-muted/80 ml-1 break-words">{q.label}</label>
             {q.type === 'longtext' ? (
               <textarea
                 value={answers[q.id] || ''}
