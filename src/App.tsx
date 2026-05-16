@@ -3,6 +3,7 @@ import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, UserPlus, 
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
+import { ApiStatusTracker } from './components/ApiStatusTracker';
 import { startChat, Message } from './services/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -655,9 +656,9 @@ export default function App() {
     }
   }, [messages, isLoading, currentSessionId, showFullHistory]);
 
-  // Re-start chat instance when switching sessions
+  // Initialize chat instance
   useEffect(() => {
-    chatInstance.current = startChat(messages);
+    chatInstance.current = startChat();
     setShowFullHistory(false); // Reset history view on session switch
   }, [currentSessionId]);
 
@@ -792,7 +793,7 @@ export default function App() {
 
     try {
       if (!chatInstance.current) {
-        chatInstance.current = startChat(messages);
+        chatInstance.current = startChat();
       }
 
       // Step-through stages
@@ -808,7 +809,8 @@ export default function App() {
       while (retries < maxRetries) {
         try {
           response = await chatInstance.current.sendMessage({
-            message: parts
+            message: parts,
+            history: messages // Pass current history here
           });
           break; // Success!
         } catch (err: any) {
@@ -1482,7 +1484,8 @@ export default function App() {
           {/* Main Content Areas */}
           {currentView === 'admin' && role === 'admin' && (
         <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
-          <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24">
+          <ApiStatusTracker variant="minimal" />
+          <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24 mt-8">
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
@@ -1498,16 +1501,17 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex bg-black/40 p-1 rounded-2xl border border-white/5 self-start">
-                <button 
-                  onClick={() => setAdminSubView('overview')}
-                  className={cn(
-                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    adminSubView === 'overview' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <Activity size={14} /> Overview
-                </button>
+              <div className="flex flex-col gap-4">
+                <div className="flex bg-black/40 p-1 rounded-2xl border border-white/5 self-start md:self-end">
+                  <button 
+                    onClick={() => setAdminSubView('overview')}
+                    className={cn(
+                      "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                      adminSubView === 'overview' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <Activity size={14} /> Overview
+                  </button>
                 <button 
                   onClick={() => setAdminSubView('monetization')}
                   className={cn(
@@ -1545,7 +1549,8 @@ export default function App() {
                   <Settings size={14} /> System
                 </button>
               </div>
-            </header>
+            </div>
+          </header>
 
             {adminSubView === 'overview' ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1580,6 +1585,7 @@ export default function App() {
                             Neural uplink instances currently bridging with the network core.
                           </p>
                         </div>
+
 
                         <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
                           <div className="flex justify-between items-center">
@@ -2177,6 +2183,9 @@ export default function App() {
                      <h2 className="text-3xl font-display font-black text-brand-text italic uppercase">System <span className="text-brand-cyan">Matrix Controls</span></h2>
                      <p className="text-brand-text-muted text-sm font-light">Global security overrides and network-level configurations.</p>
                   </div>
+
+                  {/* API Infrastructure diagnostics moved here */}
+                  <ApiStatusTracker />
 
                   <div className="bento-card p-8 border-white/5 space-y-8">
                     <div className="flex items-center justify-between p-6 bg-black/40 rounded-3xl border border-white/5 group hover:bg-white/10 transition-all">

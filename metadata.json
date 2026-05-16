@@ -1,6 +1,6 @@
 {
   "name": "My Psych Lens",
-  "description": "An advanced AI-powered psychology consultation and behavioral research tool that analyzes human complex behavior and emotions through deep contextual history.",
+  "description": "An advanced AI-powered behavioral synthesis and emotional support system. Specialized in depth-psychology, micro-expression analysis, and empathetic validation of human sensory and emotional states.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

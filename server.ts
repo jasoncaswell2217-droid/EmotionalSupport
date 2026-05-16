@@ -13,7 +13,7 @@ const PORT = 3000;
 let aiClient: any = null;
 function getAi() {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY || "";
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY || "";
     aiClient = new GoogleGenAI({
       apiKey,
       httpOptions: {
@@ -28,24 +28,42 @@ function getAi() {
 
 app.use(express.json());
 
+// API status tracking
+let lastApiError: { message: string; timestamp: number } | null = null;
+let apiStats = {
+  totalCalls: 0,
+  successfulCalls: 0,
+  failedCalls: 0,
+  lastCallTimestamp: 0
+};
+
 // API routes
 app.get("/api/health", (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   res.json({ 
     status: "ok", 
-    hasKey: !!process.env.GEMINI_API_KEY,
-    keyLength: process.env.GEMINI_API_KEY?.length || 0
+    hasKey: !!apiKey,
+    keyLength: apiKey?.length || 0,
+    envUsed: process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : (process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : (process.env.VITE_GEMINI_API ? 'VITE_GEMINI_API' : 'Other')),
+    lastError: lastApiError,
+    stats: apiStats
   });
 });
 
 app.post("/api/gemini/chat", async (req, res) => {
   const { history, message, systemInstruction, tools } = req.body;
+  apiStats.totalCalls++;
+  apiStats.lastCallTimestamp = Date.now();
   
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    console.error("GEMINI_API_KEY is missing from environment variables.");
+    const errorMsg = "Gemini API key is missing from environment variables.";
+    console.error(errorMsg);
+    lastApiError = { message: errorMsg, timestamp: Date.now() };
+    apiStats.failedCalls++;
     return res.status(500).json({ 
       error: {
-        message: "GEMINI_API_KEY is not set on the server. Please check Settings > Secrets.",
+        message: "Gemini API key is not set on the server. Please check Settings > Secrets and ensure GEMINI_API_KEY is defined.",
         status: 500
       }
     });
@@ -57,30 +75,56 @@ app.post("/api/gemini/chat", async (req, res) => {
     
     const ai = getAi();
     
-    // Using generateContent with history as part of contents for maximum compatibility
+    // Using ai.models.generateContent directly as per modern SDK guidelines
+    // Handle message as parts array (from client) or single string
+    const messageParts = Array.isArray(message) 
+      ? message.map((p: any) => {
+          if (typeof p === 'string') return { text: p };
+          if (p && typeof p === 'object') {
+            if (p.text) return { text: String(p.text) };
+            if (p.inlineData) return { inlineData: p.inlineData };
+          }
+          return p;
+        })
+      : [{ text: String(message) }];
+
     const contents = [
       ...(history || []).map((h: any) => ({
         role: h.role === 'model' ? 'model' : 'user',
-        parts: h.parts.map((p: any) => p.text ? { text: p.text } : p)
+        parts: (Array.isArray(h.parts) ? h.parts : [h.parts]).map((p: any) => {
+          if (typeof p === 'string') return { text: p };
+          if (p && typeof p === 'object') {
+             if (p.text) return { text: String(p.text) };
+             if (p.inlineData) return { inlineData: p.inlineData };
+             if (p.functionCall) return { functionCall: p.functionCall };
+             if (p.functionResponse) return { functionResponse: p.functionResponse };
+          }
+          return p;
+        })
       })),
-      { role: 'user', parts: [{ text: message }] }
+      { 
+        role: 'user', 
+        parts: messageParts
+      }
     ];
 
     const response = await ai.models.generateContent({
       model: modelName,
       contents,
       config: {
-        systemInstruction,
+        systemInstruction: systemInstruction ? String(systemInstruction) : undefined,
         temperature: 0.7,
         tools: tools ? [{ functionDeclarations: tools }] : undefined
       }
     });
 
-    // We must return a structure that the client expects
-    // Extracting the pure JSON version of the response
+    apiStats.successfulCalls++;
+
+    // Return the response structure expected by the client
     res.json({
       candidates: response.candidates,
-      usageMetadata: response.usageMetadata
+      usageMetadata: response.usageMetadata,
+      text: response.text
     });
   } catch (error: any) {
     console.error("Gemini API Error Detail:", {
@@ -91,6 +135,9 @@ app.post("/api/gemini/chat", async (req, res) => {
       apiKeyPresent: !!process.env.GEMINI_API_KEY
     });
     
+    lastApiError = { message: error.message || "Unknown API error", timestamp: Date.now() };
+    apiStats.failedCalls++;
+
     res.status(error.status || 500).json({ 
       error: {
         message: error.message || "Failed to communicate with Gemini API",
