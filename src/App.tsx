@@ -46,6 +46,7 @@ export default function App() {
   });
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [accuracyStats, setAccuracyStats] = useState({ total: 0, accurate: 0, percentage: 0 });
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeVisitors, setActiveVisitors] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -240,6 +241,30 @@ export default function App() {
     });
     return () => unsubscribe();
   }, [role, currentView, user]);
+
+  // Accuracy Stats Sync for Admin
+  useEffect(() => {
+    if (role !== 'admin' || currentView !== 'admin' || !user) {
+      setAccuracyStats({ total: 0, accurate: 0, percentage: 0 });
+      return;
+    }
+
+    const feedbackRef = collection(db, 'feedback');
+    const unsubscribe = onSnapshot(feedbackRef, (snapshot) => {
+      const feedbacks = snapshot.docs.map(d => d.data());
+      const total = feedbacks.length;
+      const accurate = feedbacks.filter(f => (f as any).isAccurate).length;
+      const percentage = total > 0 ? Math.round((accurate / total) * 100) : 0;
+      setAccuracyStats({ total, accurate, percentage });
+    }, (error) => {
+      if (!error.message.includes('permission-denied')) {
+        console.error("Feedback sync error:", error);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [role, currentView, user]);
+  
   const [sessions, setSessions] = useState<Record<string, Session>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [isMigrating, setIsMigrating] = useState(false);
@@ -559,7 +584,7 @@ export default function App() {
   const [currentMood, setCurrentMood] = useState<string>("Observing...");
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [sessionToDeleteId, setSessionToDeleteId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -876,6 +901,24 @@ export default function App() {
     }
   };
 
+  const handleFeedback = async (messageId: string, isAccurate: boolean) => {
+    if (!user) return;
+    try {
+      const feedbackId = `fb_${Math.random().toString(36).substring(2, 11)}`;
+      await setDoc(doc(db, 'feedback', feedbackId), {
+        messageId,
+        sessionId: currentSessionId,
+        isAccurate,
+        userId: user.uid,
+        timestamp: Date.now()
+      });
+      showToast("Diagnostic feedback received", "success");
+    } catch (error) {
+      console.error("Feedback error:", error);
+      showToast("Integrity link failed", "error");
+    }
+  };
+
   const handleFormSubmit = async (answers: Record<string, string>) => {
     setIsLoading(true);
     
@@ -985,13 +1028,20 @@ export default function App() {
     setCurrentSessionId(newId);
   };
 
-  const deleteSession = async (e: React.MouseEvent, id: string) => {
+  const deleteSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    setSessionToDeleteId(id);
+  };
+
+  const finalizeDelete = async () => {
+    if (!sessionToDeleteId) return;
+    const id = sessionToDeleteId;
     
     if (user) {
       try {
         const sessionRef = doc(db, 'users', user.uid, 'sessions', id);
         await deleteDoc(sessionRef);
+        showToast("Analysis purged from cortex", "info");
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/sessions/${id}`);
       }
@@ -999,7 +1049,6 @@ export default function App() {
 
     if (Object.keys(sessions).length === 1) {
       if (!user) {
-        // Local only behavior
         const newId = Date.now().toString();
         setSessions({
           [newId]: {
@@ -1013,6 +1062,7 @@ export default function App() {
       } else {
         createNewSession();
       }
+      setSessionToDeleteId(null);
       return;
     }
     
@@ -1022,24 +1072,20 @@ export default function App() {
         delete next[id];
         return next;
       });
+      showToast("Local log cleared", "info");
     }
 
     if (currentSessionId === id) {
       const remainingIds = Object.keys(sessions).filter(sId => sId !== id);
       setCurrentSessionId(remainingIds[0]);
     }
+    
+    setSessionToDeleteId(null);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isConfirmingDelete) {
-      deleteSession(e, currentSessionId);
-      setIsConfirmingDelete(false);
-    } else {
-      setIsConfirmingDelete(true);
-      // Auto-reset after 3 seconds if not confirmed
-      setTimeout(() => setIsConfirmingDelete(false), 3000);
-    }
+    deleteSession(e, currentSessionId);
   };
 
   if (isAuthLoading) {
@@ -1155,21 +1201,10 @@ export default function App() {
 
               <button 
                 onClick={handleDeleteClick}
-                className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative",
-                  isConfirmingDelete ? "bg-brand-orange text-white shadow-lg shadow-brand-orange/20" : "bg-white/5 border border-white/10 text-brand-text-muted hover:text-brand-orange hover:bg-brand-orange/5"
-                )}
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative bg-white/5 border border-white/10 text-brand-text-muted hover:text-brand-orange hover:bg-brand-orange/5"
                 title="Purge Active Session"
               >
                 <Trash2 size={18} />
-                {isConfirmingDelete && (
-                  <motion.div 
-                    layoutId="purge-badge"
-                    className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-white text-[6px] font-black uppercase text-black italic animate-bounce"
-                  >
-                    CONFIRM
-                  </motion.div>
-                )}
               </button>
             </div>
           )}
@@ -1486,7 +1521,7 @@ export default function App() {
         <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
           <ApiStatusTracker variant="minimal" />
           <div className="max-w-7xl mx-auto w-full space-y-8 md:space-y-12 pb-24 mt-8">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan/40 flex items-center justify-center shadow-lg shadow-brand-cyan/10">
                   <Shield size={32} className="text-brand-cyan" />
@@ -1500,57 +1535,57 @@ export default function App() {
                   </p>
                 </div>
               </div>
+            </header>
 
-              <div className="flex flex-col gap-4">
-                <div className="flex bg-black/40 p-1 rounded-2xl border border-white/5 self-start md:self-end">
+            <nav className="w-full bg-black/40 p-1 rounded-2xl border border-white/5 overflow-hidden">
+               <div className="flex w-full gap-1">
                   <button 
                     onClick={() => setAdminSubView('overview')}
                     className={cn(
-                      "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                      "flex-1 px-3 py-3 md:px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
                       adminSubView === 'overview' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
                     )}
                   >
-                    <Activity size={14} /> Overview
+                    <Activity size={18} /> <span className="hidden sm:inline">Overview</span>
                   </button>
-                <button 
-                  onClick={() => setAdminSubView('monetization')}
-                  className={cn(
-                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    adminSubView === 'monetization' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <CreditCard size={14} /> Monetization
-                </button>
-                <button 
-                  onClick={() => setAdminSubView('users')}
-                  className={cn(
-                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    adminSubView === 'users' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <Users size={14} /> Users
-                </button>
-                <button 
-                  onClick={() => setAdminSubView('content')}
-                  className={cn(
-                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    adminSubView === 'content' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <BookOpen size={14} /> Content
-                </button>
-                <button 
-                  onClick={() => setAdminSubView('system')}
-                  className={cn(
-                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    adminSubView === 'system' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
-                  )}
-                >
-                  <Settings size={14} /> System
-                </button>
-              </div>
-            </div>
-          </header>
+                  <button 
+                    onClick={() => setAdminSubView('monetization')}
+                    className={cn(
+                      "flex-1 px-3 py-3 md:px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                      adminSubView === 'monetization' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <CreditCard size={18} /> <span className="hidden sm:inline">Monetization</span>
+                  </button>
+                  <button 
+                    onClick={() => setAdminSubView('users')}
+                    className={cn(
+                      "flex-1 px-3 py-3 md:px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                      adminSubView === 'users' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <Users size={18} /> <span className="hidden sm:inline">Users</span>
+                  </button>
+                  <button 
+                    onClick={() => setAdminSubView('content')}
+                    className={cn(
+                      "flex-1 px-3 py-3 md:px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                      adminSubView === 'content' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <BookOpen size={18} /> <span className="hidden sm:inline">Content</span>
+                  </button>
+                  <button 
+                    onClick={() => setAdminSubView('system')}
+                    className={cn(
+                      "flex-1 px-3 py-3 md:px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                      adminSubView === 'system' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <Settings size={18} /> <span className="hidden sm:inline">System</span>
+                  </button>
+               </div>
+            </nav>
 
             {adminSubView === 'overview' ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1569,8 +1604,34 @@ export default function App() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-6">
-                        {/* Real-time Visitor Card */}
                         <div className="p-6 bg-brand-cyan/10 rounded-3xl border border-brand-cyan/20 space-y-4 shadow-[0_0_15px_rgba(6,178,210,0.1)]">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Diagnostic Accuracy</span>
+                            <div className="flex items-center gap-1.5 font-mono text-[8px] font-black text-brand-cyan uppercase">
+                                <Sparkles size={10} className="text-brand-cyan" />
+                                CONFIDENCE
+                            </div>
+                          </div>
+                          <div className="text-4xl md:text-5xl font-display font-black text-brand-text italic">
+                            {accuracyStats.percentage}%
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                               <motion.div 
+                                 initial={{ width: 0 }}
+                                 animate={{ width: `${accuracyStats.percentage}%` }}
+                                 className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
+                               />
+                             </div>
+                             <span className="text-[10px] font-mono whitespace-nowrap text-brand-text-muted">{accuracyStats.accurate}/{accuracyStats.total}</span>
+                          </div>
+                          <p className="text-[10px] text-brand-text-muted leading-relaxed opacity-60">
+                            Based on user-reported verification of model results. High accuracy indicates model alignment.
+                          </p>
+                        </div>
+
+                        {/* Real-time Visitor Card */}
+                        <div className="p-6 bg-black/40 rounded-3xl border border-white/5 space-y-4">
                           <div className="flex justify-between items-center">
                             <span className="text-xs font-bold text-brand-text-muted uppercase tracking-widest">Active Visitors</span>
                             <div className="flex items-center gap-1.5 font-mono text-[8px] font-black text-brand-cyan uppercase animate-pulse">
@@ -2840,6 +2901,7 @@ export default function App() {
                     timestamp={msg.timestamp}
                     functionCall={functionCall}
                     onFormSubmit={handleFormSubmit}
+                    onFeedback={handleFeedback}
                     isLoading={isLoading && idx === visibleMessages.length - 1}
                   />
                 );
@@ -3345,6 +3407,56 @@ export default function App() {
                   <span className="relative z-10">Save Settings</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-brand-cyan/20 to-brand-purple/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL OVERLAY - DELETE CONFIRMATION */}
+      <AnimatePresence>
+        {sessionToDeleteId && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={(e) => e.target === e.currentTarget && setSessionToDeleteId(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="w-full max-w-sm bg-[#0D0D12] border border-red-500/20 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden flex flex-col items-center text-center"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500/0 via-red-500 to-red-500/0" />
+              
+              <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+                <Trash2 size={40} className="animate-pulse" />
+              </div>
+              
+              <h2 className="font-display font-black text-2xl tracking-tight text-white mb-2 uppercase italic">Purge Log?</h2>
+              <p className="text-brand-text-muted text-[11px] font-mono leading-relaxed uppercase tracking-widest opacity-60 mb-8 px-4">
+                Are you sure you want to permanently delete <span className="text-red-500 font-black">"{sessions[sessionToDeleteId]?.title || "this chat"}"</span>? This cognitive trace cannot be recovered once purged.
+              </p>
+              
+              <div className="flex flex-col w-full gap-3">
+                <button 
+                  onClick={finalizeDelete}
+                  className="w-full py-4 rounded-2xl bg-red-500 text-white font-black uppercase text-xs tracking-[0.3em] shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95"
+                >
+                  Confirm Purge
+                </button>
+                <button 
+                  onClick={() => setSessionToDeleteId(null)}
+                  className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-brand-text-muted font-black uppercase text-xs tracking-[0.3em] hover:bg-white/10 transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              <div className="absolute -bottom-4 -right-4 opacity-[0.03] pointer-events-none">
+                <Shield size={120} />
               </div>
             </motion.div>
           </motion.div>

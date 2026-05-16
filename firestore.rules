@@ -96,6 +96,16 @@ service cloud.firestore {
         && data.lastSeen is int;
     }
 
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['messageId', 'sessionId', 'isAccurate', 'userId', 'timestamp'])
+        && data.keys().size() == 5
+        && data.messageId is string && data.messageId.size() <= 128
+        && data.sessionId is string && data.sessionId.size() <= 128
+        && data.isAccurate is bool
+        && data.userId == request.auth.uid
+        && data.timestamp is int;
+    }
+
     // --- Matches ---
     match /users/{userId} {
       // Using isSignedIn() instead of isVerified() for profile access if verification hasn't happened yet,
@@ -123,6 +133,11 @@ service cloud.firestore {
           allow delete: if isOwner(userId);
         }
       }
+    }
+
+    match /feedback/{feedbackId} {
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(feedbackId) && isValidFeedback(incoming());
     }
 
     match /stats/{docId} {

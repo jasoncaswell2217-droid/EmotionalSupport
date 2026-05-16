@@ -70,9 +70,26 @@
         "lastSeen": { "type": "integer" }
       },
       "required": ["lastSeen"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback on AI response accuracy.",
+      "type": "object",
+      "properties": {
+        "messageId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "isAccurate": { "type": "boolean" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["messageId", "isAccurate", "userId", "timestamp"]
     }
   },
   "firestore": {
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Log of user feedback on responses."
+    },
     "/presence/{sessionId}": {
       "schema": "ActiveSession",
       "description": "Active users currently on the site."

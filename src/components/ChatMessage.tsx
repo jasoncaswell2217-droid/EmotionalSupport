@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { User, Brain, Eye, EyeOff, Activity, ChevronDown } from 'lucide-react';
+import { User, Brain, Eye, EyeOff, Activity, ChevronDown, ThumbsUp, ThumbsDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { PsychForm, Question } from './PsychForm';
@@ -19,16 +19,24 @@ interface ChatMessageProps {
     };
   };
   onFormSubmit?: (answers: Record<string, string>) => void;
+  onFeedback?: (messageId: string, isAccurate: boolean) => void;
   isLoading?: boolean;
   timestamp?: number;
 }
 
-export const ChatMessage = memo(function ChatMessage({ id, role, content, parts, functionCall, onFormSubmit, isLoading, timestamp }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ id, role, content, parts, functionCall, onFormSubmit, onFeedback, isLoading, timestamp }: ChatMessageProps) {
   const isUser = role === 'user';
+  const [feedbackGiven, setFeedbackGiven] = useState<'accurate' | 'inaccurate' | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(isUser); // Default collapsed for user messages to save space
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const images = useMemo(() => parts?.filter(p => p.inlineData).map(p => p.inlineData.data) || [], [parts]);
   const stableHash = useMemo(() => Math.random().toString(16).slice(2, 8).toUpperCase(), []);
+
+  const handleFeedback = (accurate: boolean) => {
+    if (feedbackGiven || !onFeedback || !id) return;
+    setFeedbackGiven(accurate ? 'accurate' : 'inaccurate');
+    onFeedback(id, accurate);
+  };
 
   // Split content for model responses if it contains a Psychological Analysis section
   const { displayContent, analysisContent } = useMemo(() => {
@@ -175,27 +183,49 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
               )}
               
               <div className={cn(
-                "pt-4 border-t border-bento-border flex items-center justify-between gap-4 text-brand-text-muted/40",
+                "pt-4 border-t border-bento-border flex flex-col md:flex-row md:items-center justify-between gap-4 text-brand-text-muted/70",
                 (content || images.length > 0) ? "mt-5" : "mt-0"
               )}>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "w-1.5 h-1.5 rounded-full",
-                      isUser ? "bg-brand-text-muted/40" : "bg-brand-cyan"
-                    )} />
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-bold truncate flex items-center gap-2">
-                      <span>{isUser ? "Observation Log Transmitted" : "Intelligence Engine Synchronized"}</span>
-                      {!isUser && <span className="opacity-30 font-mono text-[8px] tracking-normal lowercase">v1.2.6-admin</span>}
-                    </span>
-                  </div>
                   {timestamp && (
-                    <span className="text-[9px] font-mono opacity-60 whitespace-nowrap bg-brand-text-muted/5 px-2 py-0.5 rounded border border-bento-border">
-                      {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                    <span className="text-[10px] font-mono tracking-wider text-brand-text-muted">
+                      {new Date(timestamp).toLocaleDateString()} {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                 </div>
-                {!isUser && <div className="text-[9px] font-mono shrink-0">HASH: {stableHash}</div>}
+                
+                <div className="flex items-center gap-4">
+                  {!isUser && (
+                    <div className="flex items-center gap-2">
+                      {feedbackGiven ? (
+                        <div className={cn(
+                          "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                          feedbackGiven === 'accurate' ? "bg-brand-cyan/10 text-brand-cyan" : "bg-brand-purple/10 text-brand-purple"
+                        )}>
+                          <Check size={10} />
+                          {feedbackGiven === 'accurate' ? "Verified Accurate" : "Logged as Inaccurate"}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleFeedback(true)}
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan hover:bg-brand-cyan/20 transition-all text-[9.5px] font-black uppercase tracking-widest active:scale-95"
+                          >
+                            <ThumbsUp size={12} />
+                            <span>Accurate</span>
+                          </button>
+                          <button 
+                            onClick={() => handleFeedback(false)}
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-purple/10 border border-brand-purple/20 text-brand-purple hover:bg-brand-purple/20 transition-all text-[9.5px] font-black uppercase tracking-widest active:scale-95"
+                          >
+                            <ThumbsDown size={12} />
+                            <span>Not Accurate</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
