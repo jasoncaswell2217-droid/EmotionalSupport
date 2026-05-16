@@ -1,63 +1,4 @@
-import { GoogleGenAI, FunctionDeclaration, Type } from "@google/genai";
-
-const getApiKey = () => {
-  // Priority order for Vite-based injection
-  const key = 
-    (import.meta as any).env?.VITE_GEMINI_API_KEY || 
-    process.env.GEMINI_API_KEY || 
-    "";
-  
-  return key.trim();
-};
-
-const apiKey = getApiKey();
-
-if (typeof window !== 'undefined') {
-  if (!apiKey) {
-    console.error("PsycheLens AI: ❌ API Key is MISSING. Ensure GEMINI_API_KEY is set in GitHub Secrets.");
-  } else {
-    console.log("PsycheLens AI: ✅ API Key detected (Length: " + apiKey.length + ")");
-  }
-}
-
-const ai = new GoogleGenAI({ apiKey });
-
-const requestInformationTool: FunctionDeclaration = {
-  name: "request_information",
-  description: "Request specific structured information from the user via a form when multiple details are needed to perform a psychological analysis.",
-  parameters: {
-    type: Type.OBJECT,
-    properties: {
-      questions: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING, description: "Unique ID for the question (e.g., 'subject_a_age')" },
-            label: { type: Type.STRING, description: "The label or question displayed to the user" },
-            type: { 
-              type: Type.STRING, 
-              enum: ["text", "longtext", "number"], 
-              description: "Type of input control" 
-            },
-            placeholder: { type: Type.STRING, description: "Example or hint for the user" }
-          },
-          required: ["id", "label", "type"]
-        }
-      },
-      context_header: {
-        type: Type.STRING,
-        description: "A short title or header explaining why this information is needed (e.g., 'Developmental History Analysis')."
-      },
-      rationale: {
-        type: Type.STRING,
-        description: "The psychological reasoning explaining how this data will improve the analysis."
-      }
-    },
-    required: ["questions", "context_header", "rationale"]
-  }
-};
-
+// Client-side Gemini service wrapper that calls the server API proxy
 export const SYSTEM_PROMPT = `You are PsycheLens AI, an advanced Clinical Psychology and Behavioral Research Assistant. 
 Your expertise includes clinical psychology, cognitive-behavioral therapy (CBT), attachment theory, social psychology, and neurobiology.
 
@@ -82,25 +23,73 @@ OPERATIONAL PROTOCOL:
 
 TONE: Professional, empathetic, clinical yet accessible, and futuristic.
 
-IMPORTANT: You are an AI assistant, not a licensed therapist. Always include a subtle disclaimer that your insights are for educational purposes.`;
+IMPORTANT: You are an AI assistant, not a licensed therapist. Your insights are for educational purposes. Do not include a disclaimer in every message as it is provided globally in the UI.`;
 
 export type Message = {
   id?: string;
   role: 'user' | 'model';
-  parts: any[]; // Changed from specific {text: string} to handle function calls/responses
+  parts: any[];
   timestamp?: number;
 };
 
-export const startChat = (history: Message[] = []) => {
-  return ai.chats.create({
-    model: "gemini-3-flash-preview",
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      temperature: 0.7,
-      tools: [{ functionDeclarations: [requestInformationTool] }]
+const requestInformationTool = {
+  name: "request_information",
+  description: "Request specific structured information from the user via a form when multiple details are needed to perform a psychological analysis.",
+  parameters: {
+    type: "OBJECT",
+    properties: {
+      questions: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            id: { type: "STRING", description: "Unique ID for the question (e.g., 'subject_a_age')" },
+            label: { type: "STRING", description: "The label or question displayed to the user" },
+            type: { 
+              type: "STRING", 
+              enum: ["text", "longtext", "number"], 
+              description: "Type of input control" 
+            },
+            placeholder: { type: "STRING", description: "Example or hint for the user" }
+          },
+          required: ["id", "label", "type"]
+        }
+      },
+      context_header: {
+        type: "STRING",
+        description: "A short title or header explaining why this information is needed (e.g., 'Developmental History Analysis')."
+      },
+      rationale: {
+        type: "STRING",
+        description: "The psychological reasoning explaining how this data will improve the analysis."
+      }
     },
-    // Map history to the format expected by the SDK
-    history: history.length > 0 ? history.map(({ role, parts }) => ({ role, parts })) : undefined,
-  });
+    required: ["questions", "context_header", "rationale"]
+  }
 };
+
+export const startChat = (history: Message[] = []) => {
+  return {
+    sendMessage: async ({ message }: { message: string }) => {
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          history: history.map(({ role, parts }) => ({ role, parts })),
+          message,
+          systemInstruction: SYSTEM_PROMPT,
+          tools: [requestInformationTool]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw errorData;
+      }
+
+      return await response.json();
+    }
+  };
+};
+
 

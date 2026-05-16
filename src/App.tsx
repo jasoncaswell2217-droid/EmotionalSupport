@@ -45,6 +45,7 @@ export default function App() {
   });
   const [globalStats, setGlobalStats] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [activeVisitors, setActiveVisitors] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const contentEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -59,14 +60,18 @@ export default function App() {
     content: "Our system uses advanced psychological archetypes to map your cognitive landscape. By analyzing behavioral patterns and semantic density, we generate a real-time diagnostic of your current mental state."
   });
 
-  const [systemSettings, setSystemSettings] = useState<{ registrationEnabled: boolean; registrationDisabledMessage: string }>({
+  const [systemSettings, setSystemSettings] = useState<{ registrationEnabled: boolean; registrationDisabledMessage: string; adminCreditsEnabled: boolean }>({
     registrationEnabled: true,
-    registrationDisabledMessage: "Registration Disabled By The Admins"
+    registrationDisabledMessage: "Registration Disabled By The Admins",
+    adminCreditsEnabled: false
   });
 
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+  const [shouldShowDisclaimer, setShouldShowDisclaimer] = useState(() => {
+    return localStorage.getItem('psych_disclaimer_dismissed') !== 'true';
+  });
 
   const insertIntoContent = (prefix: string, suffix: string = '') => {
     const textarea = contentEditorRef.current;
@@ -481,9 +486,37 @@ export default function App() {
     const unsubscribe = onSnapshot(userRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
+        setUserProfile(data);
         if (data.role) setRole(data.role as 'user' | 'admin');
         if (data.preferences) setPreferences(data.preferences);
         if (data.theme) setTheme(data.theme);
+
+        // Skip schema initialization if there are pending local writes to avoid loops & flickering
+        if (snapshot.metadata.hasPendingWrites) return;
+
+        // Ensure legacy users get credit fields initialized and fulfill the 10-field schema
+        const isMissing = data.credits === undefined || 
+                          data.maxCredits === undefined || 
+                          data.plan === undefined || 
+                          data.totalMessages === undefined || 
+                          data.createdAt === undefined || 
+                          data.lastActive === undefined || 
+                          data.email === undefined;
+
+        if (isMissing) {
+          setDoc(userRef, {
+            plan: data.plan || 'free',
+            credits: data.credits !== undefined ? data.credits : 5,
+            maxCredits: data.maxCredits !== undefined ? data.maxCredits : 5,
+            totalMessages: data.totalMessages !== undefined ? data.totalMessages : 0,
+            createdAt: data.createdAt || serverTimestamp(),
+            lastActive: data.lastActive || serverTimestamp(),
+            email: data.email || user.email,
+            role: data.role || 'user',
+            theme: data.theme || theme,
+            preferences: data.preferences || preferences
+          }, { merge: true }).catch(() => {});
+        }
       } else {
         // Initialize user doc if it doesn't exist
         const isAdminEmail = user.email === 'jasoncaswell2217@gmail.com';
@@ -491,6 +524,9 @@ export default function App() {
           preferences,
           theme,
           role: isAdminEmail ? 'admin' : 'user',
+          plan: 'free',
+          credits: 5,
+          maxCredits: 5,
           email: user.email,
           totalMessages: 0,
           createdAt: serverTimestamp(),
@@ -676,6 +712,15 @@ export default function App() {
   const handleSendMessage = async (text: string, images?: string[]) => {
     if (!text.trim() && (!images || images.length === 0)) return;
 
+    // Credit consumption check
+    if (user && userProfile) {
+      const needsCredits = role !== 'admin' || systemSettings.adminCreditsEnabled;
+      if (needsCredits && (userProfile.credits || 0) <= 0) {
+        showToast("Neural uplink depleted. Inadequate credits for analysis.", 'error');
+        return;
+      }
+    }
+
     const parts: any[] = [];
     if (text.trim()) parts.push({ text });
     if (images && images.length > 0) {
@@ -773,9 +818,16 @@ export default function App() {
         // Increment global message count
         const statsRef = doc(db, 'stats', 'global');
         setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
-        // Increment per-user usage
+        // Increment per-user usage and decrement credits
         const userRef = doc(db, 'users', user.uid);
-        setDoc(userRef, { totalMessages: increment(1), lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
+        const updateData: any = { 
+          totalMessages: increment(1), 
+          lastActive: serverTimestamp() 
+        };
+        if (role !== 'admin' || systemSettings.adminCreditsEnabled) {
+          updateData.credits = increment(-1);
+        }
+        setDoc(userRef, updateData, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -860,9 +912,16 @@ export default function App() {
         // Increment global message count 
         const statsRef = doc(db, 'stats', 'global');
         setDoc(statsRef, { totalMessages: increment(1) }, { merge: true }).catch(() => {});
-        // Increment per-user usage
+        // Increment per-user usage and decrement credits
         const userRef = doc(db, 'users', user.uid);
-        setDoc(userRef, { totalMessages: increment(1), lastActive: serverTimestamp() }, { merge: true }).catch(() => {});
+        const updateData: any = { 
+          totalMessages: increment(1), 
+          lastActive: serverTimestamp() 
+        };
+        if (role !== 'admin' || systemSettings.adminCreditsEnabled) {
+          updateData.credits = increment(-1);
+        }
+        setDoc(userRef, updateData, { merge: true }).catch(() => {});
       } else {
         setSessions(prev => {
           const session = prev[currentSessionId];
@@ -1342,6 +1401,7 @@ export default function App() {
                           <tr className="border-b border-white/10 text-[10px] uppercase font-black tracking-widest text-brand-text-muted">
                             <th className="pb-4 pl-2">User Email</th>
                             <th className="pb-4">Access Level</th>
+                            <th className="pb-4">Neural Credits</th>
                             <th className="pb-4 hidden lg:table-cell">Account ID</th>
                             <th className="pb-4 pr-2 text-right">Action</th>
                           </tr>
@@ -1364,6 +1424,69 @@ export default function App() {
                                 )}>
                                   {u.role || 'user'}
                                 </span>
+                              </td>
+                              <td className="py-4 font-mono text-[10px]">
+                                <div className="flex items-center gap-3">
+                                  <button 
+                                    onClick={async () => {
+                                      const uRef = doc(db, 'users', u.id);
+                                      const { id, ...userData } = u;
+                                      try {
+                                        const newCredits = Math.max(0, (u.credits || 0) - 1);
+                                        // Ensure full schema compliance on update to pass rules
+                                        await setDoc(uRef, { 
+                                          ...userData, 
+                                          credits: newCredits,
+                                          maxCredits: u.maxCredits ?? 5,
+                                          plan: u.plan ?? 'free',
+                                          totalMessages: u.totalMessages ?? 0,
+                                          createdAt: u.createdAt ?? serverTimestamp(),
+                                          lastActive: serverTimestamp(),
+                                          email: u.email ?? 'subject@neural.link',
+                                          role: u.role ?? 'user',
+                                          theme: u.theme ?? 'cybercore',
+                                          preferences: u.preferences ?? { enhancedThinkingEnabled: false, chatHistoryEnabled: true }
+                                        }, { merge: true });
+                                        showToast(`Depleted credits for ${u.email || u.id.substring(0, 8)}`, 'info');
+                                      } catch (e) {
+                                        showToast("Failed to modulate neural credits", "error");
+                                      }
+                                    }}
+                                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-rose-500/20 text-brand-text-muted hover:text-rose-400 flex items-center justify-center transition-all border border-white/5"
+                                  >
+                                    <Minus size={10} />
+                                  </button>
+                                  <span className="text-brand-cyan font-black w-8 text-center">{u.credits ?? 0}</span>
+                                  <button 
+                                    onClick={async () => {
+                                      const uRef = doc(db, 'users', u.id);
+                                      const { id, ...userData } = u;
+                                      try {
+                                        const newCredits = (u.credits || 0) + 1;
+                                        // Ensure full schema compliance on update to pass rules
+                                        await setDoc(uRef, { 
+                                          ...userData, 
+                                          credits: newCredits,
+                                          maxCredits: u.maxCredits ?? 5,
+                                          plan: u.plan ?? 'free',
+                                          totalMessages: u.totalMessages ?? 0,
+                                          createdAt: u.createdAt ?? serverTimestamp(),
+                                          lastActive: serverTimestamp(),
+                                          email: u.email ?? 'subject@neural.link',
+                                          role: u.role ?? 'user',
+                                          theme: u.theme ?? 'cybercore',
+                                          preferences: u.preferences ?? { enhancedThinkingEnabled: false, chatHistoryEnabled: true }
+                                        }, { merge: true });
+                                        showToast(`Injected credits to ${u.email || u.id.substring(0, 8)}`, 'success');
+                                      } catch (e) {
+                                        showToast("Failed to modulate neural credits", "error");
+                                      }
+                                    }}
+                                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-emerald-500/20 text-brand-text-muted hover:text-emerald-400 flex items-center justify-center transition-all border border-white/5"
+                                  >
+                                    <Plus size={10} />
+                                  </button>
+                                </div>
                               </td>
                               <td className="py-4 font-mono text-[10px] text-brand-text-muted opacity-40 hidden lg:table-cell">
                                 {u.id}
@@ -1806,6 +1929,39 @@ export default function App() {
                       >
                         <motion.div 
                           animate={{ x: systemSettings.registrationEnabled ? 28 : 0 }}
+                          className="w-6 h-6 bg-white rounded-full shadow-xl z-10 relative"
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-6 bg-black/40 rounded-3xl border border-white/5 group hover:bg-white/10 transition-all">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <CreditCard size={18} className="text-brand-purple" />
+                          <h4 className="text-base font-bold text-brand-text">Administrator Credits</h4>
+                        </div>
+                        <p className="text-xs text-brand-text-muted font-medium opacity-60">Force Administrators to consume neural uplink credits.</p>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          const newStatus = !systemSettings.adminCreditsEnabled;
+                          try {
+                            await setDoc(doc(db, 'settings', 'global'), { 
+                              ...systemSettings, 
+                              adminCreditsEnabled: newStatus 
+                            });
+                            showToast(`Admin Credits ${newStatus ? 'Activated' : 'Bypassed'}`, 'success');
+                          } catch (err) {
+                            showToast("Failed to modulate admin governance", "error");
+                          }
+                        }}
+                        className={cn(
+                          "w-16 h-9 rounded-full p-1.5 transition-all relative overflow-hidden",
+                          systemSettings.adminCreditsEnabled ? "bg-brand-purple shadow-[0_0_20px_var(--theme-accent-2)]" : "bg-white/10"
+                        )}
+                      >
+                        <motion.div 
+                          animate={{ x: systemSettings.adminCreditsEnabled ? 28 : 0 }}
                           className="w-6 h-6 bg-white rounded-full shadow-xl z-10 relative"
                         />
                       </button>
@@ -2268,6 +2424,40 @@ export default function App() {
       {/* MAIN CONTENT - CHAT AREA */}
       {currentView === 'chat' && (
         <main className="flex-1 flex flex-col relative overflow-hidden">
+          {/* Credit Meter (Subtle and Sticky) */}
+          {user && userProfile && (
+            <div className="z-30 w-full bg-black/20 border-b border-white/5 px-4 md:px-8 py-2 flex items-center justify-between gap-4 backdrop-blur-md shrink-0">
+               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-brand-text-muted">
+                 <CreditCard size={12} className="text-brand-cyan drop-shadow-[0_0_5px_var(--theme-accent-1)]" />
+                 <span className="hidden xs:inline">Neural Uplink:</span> 
+                 <span className="text-brand-cyan font-black drop-shadow-[0_0_8px_rgba(0,242,255,0.4)]">
+                   {(role === 'admin' && !systemSettings.adminCreditsEnabled) 
+                     ? 'Unlimited Access' 
+                     : `${userProfile.credits ?? 0} Neural Credits`}
+                 </span>
+               </div>
+               <div className="flex-1 max-w-[200px] h-2 bg-white/5 rounded-full overflow-hidden p-[1px] border border-white/10 ring-1 ring-brand-cyan/20">
+                 <motion.div 
+                   initial={{ width: 0 }}
+                   animate={{ 
+                     width: (role === 'admin' && !systemSettings.adminCreditsEnabled) 
+                       ? '100%' 
+                       : `${Math.max(0, Math.min(100, ((userProfile.credits ?? 0) / (userProfile.maxCredits || 5)) * 100))}%` 
+                   }}
+                   className="h-full bg-gradient-to-r from-brand-cyan via-brand-cyan to-brand-purple shadow-[0_0_15px_var(--theme-accent-1)] rounded-full relative overflow-hidden"
+                 >
+                    <motion.div 
+                      animate={{ x: ['100%', '-100%'] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-1/2"
+                    />
+                 </motion.div>
+               </div>
+               <div className="hidden sm:block text-[9px] font-mono text-brand-text-muted opacity-40 uppercase tracking-tighter">
+                 Matrix Tier: <span className="text-brand-text">{role === 'admin' ? 'Administrative Core' : (userProfile.plan === 'free' ? 'Neural Baseline FREE' : userProfile.plan)}</span>
+               </div>
+            </div>
+          )}
         {/* Background Depth Flare */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
           <div className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,var(--theme-accent-1)_0%,transparent_70%)] blur-[120px]" />
@@ -2285,7 +2475,39 @@ export default function App() {
           ref={scrollRef}
           className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-4 md:px-0 scroll-smooth"
         >
-          <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-32">
+          <div className="w-full max-w-6xl mx-auto space-y-6 md:space-y-12 pb-32 pt-6">
+            {/* Global Disclaimer */}
+            <AnimatePresence>
+              {shouldShowDisclaimer && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  className="mx-4 md:mx-0 px-5 py-4 bg-brand-orange/10 border border-brand-orange/20 rounded-2xl flex items-start gap-4 backdrop-blur-sm"
+                >
+                  <div className="p-2.5 bg-brand-orange/20 rounded-xl text-brand-orange shrink-0">
+                    <Shield size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] md:text-sm text-brand-text font-medium leading-relaxed italic">
+                      <span className="font-display font-black uppercase tracking-widest text-brand-orange block mb-1">System Advisory & Disclaimer</span>
+                      This intelligent array provides automated psychological diagnostics for research and educational purposes only. Neural output is not a substitute for clinical diagnosis, therapeutic intervention, or consultation with a licensed clinical professional. 
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setShouldShowDisclaimer(false);
+                      localStorage.setItem('psych_disclaimer_dismissed', 'true');
+                    }}
+                    className="p-2 hover:bg-brand-orange/20 rounded-xl text-brand-orange/60 hover:text-brand-orange transition-all active:scale-90 shrink-0"
+                    title="Dismiss Advisory"
+                  >
+                    <X size={18} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {hasHiddenMessages && (
               <div className="flex justify-center pb-8 sticky top-0 z-10">
                 <button 

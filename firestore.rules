@@ -41,10 +41,17 @@ service cloud.firestore {
 
     // --- Validation Helpers ---
     function isValidUser(data) {
-      return data.keys().hasAll(['preferences', 'theme', 'role']) 
-        && data.keys().size() == 3
+      return data.keys().hasAll(['preferences', 'theme', 'role', 'plan', 'credits', 'maxCredits', 'totalMessages', 'lastActive', 'email', 'createdAt']) 
+        && data.keys().size() == 10
         && data.theme is string && data.theme.size() <= 64
         && data.role in ['user', 'admin']
+        && data.plan in ['free', 'pro', 'enterprise']
+        && data.credits is int
+        && data.maxCredits is int
+        && data.totalMessages is int
+        && data.lastActive is timestamp
+        && data.email is string
+        && data.createdAt is timestamp
         && data.preferences is map
         && data.preferences.keys().hasAll(['enhancedThinkingEnabled', 'chatHistoryEnabled'])
         && data.preferences.keys().size() == 2
@@ -76,9 +83,10 @@ service cloud.firestore {
     }
 
     function isValidSystemSettings(data) {
-      return data.keys().hasAll(['registrationEnabled', 'registrationDisabledMessage'])
-        && data.keys().size() == 2
+      return data.keys().hasAll(['registrationEnabled', 'registrationDisabledMessage', 'adminCreditsEnabled'])
+        && data.keys().size() == 3
         && data.registrationEnabled is bool
+        && data.adminCreditsEnabled is bool
         && data.registrationDisabledMessage is string && data.registrationDisabledMessage.size() <= 1000;
     }
 
@@ -96,7 +104,7 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming()) && (incoming().role == 'user' || isAdmin());
       allow update: if isOwner(userId) && isValidUser(incoming()) && (
-        (incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['preferences', 'theme'])) || 
+        (incoming().role == existing().role && incoming().plan == existing().plan && incoming().maxCredits == existing().maxCredits && incoming().diff(existing()).affectedKeys().hasOnly(['preferences', 'theme', 'credits', 'totalMessages', 'lastActive'])) || 
         isAdmin()
       );
 

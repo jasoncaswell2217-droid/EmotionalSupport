@@ -13,7 +13,12 @@
           }
         },
         "theme": { "type": "string" },
-        "role": { "type": "string", "enum": ["user", "admin"] }
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "plan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "credits": { "type": "integer" },
+        "maxCredits": { "type": "integer" },
+        "totalMessages": { "type": "integer" },
+        "lastActive": { "type": "string", "format": "date-time" }
       }
     },
     "Session": {
@@ -53,7 +58,8 @@
       "type": "object",
       "properties": {
         "registrationEnabled": { "type": "boolean" },
-        "registrationDisabledMessage": { "type": "string" }
+        "registrationDisabledMessage": { "type": "string" },
+        "adminCreditsEnabled": { "type": "boolean" }
       }
     },
     "ActiveSession": {
