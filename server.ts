@@ -44,7 +44,9 @@ app.use((req, res, next) => {
 });
 
 // API routes
-app.get("/api/health", (req, res) => {
+const apiRouter = express.Router();
+
+apiRouter.get("/health", (req, res) => {
   console.log("Health check requested");
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   res.json({ 
@@ -58,7 +60,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.post("/api/gemini/chat", async (req, res) => {
+apiRouter.post("/gemini/chat", async (req, res) => {
   const { history, message, systemInstruction, tools } = req.body;
   apiStats.totalCalls++;
   apiStats.lastCallTimestamp = Date.now();
@@ -161,6 +163,10 @@ app.post("/api/gemini/chat", async (req, res) => {
   }
 });
 
+// Support both root and /psychelense prefixed requests
+app.use("/api", apiRouter);
+app.use("/psychelense/api", apiRouter);
+
 async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -171,8 +177,12 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    // Serve static files from the root and the subdirectory
     app.use(express.static(distPath));
+    app.use('/psychelense', express.static(distPath));
+    
     app.get('*', (req, res) => {
+      // If request is for a file that wasn't found in static, it might be a SPA route
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

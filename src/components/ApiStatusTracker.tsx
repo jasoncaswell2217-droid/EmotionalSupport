@@ -28,7 +28,8 @@ export function ApiStatusTracker({ variant = 'full' }: { variant?: 'full' | 'min
   const checkHealth = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/health');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const response = await fetch(`${baseUrl}api/health`.replace(/\/+/g, '/'));
       if (!response.ok) throw new Error('API Unreachable');
       const data = await response.json();
       setHealth(data);

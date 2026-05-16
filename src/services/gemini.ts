@@ -74,7 +74,8 @@ const requestInformationTool = {
 export const startChat = () => {
   return {
     sendMessage: async ({ message, history = [] }: { message: any, history?: Message[] }) => {
-      const response = await fetch("/api/gemini/chat", {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const response = await fetch(`${baseUrl}api/gemini/chat`.replace(/\/+/g, '/'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
