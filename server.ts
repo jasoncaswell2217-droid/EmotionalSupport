@@ -37,8 +37,15 @@ let apiStats = {
   lastCallTimestamp: 0
 };
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // API routes
 app.get("/api/health", (req, res) => {
+  console.log("Health check requested");
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   res.json({ 
     status: "ok", 
@@ -46,7 +53,8 @@ app.get("/api/health", (req, res) => {
     keyLength: apiKey?.length || 0,
     envUsed: process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : (process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : (process.env.VITE_GEMINI_API ? 'VITE_GEMINI_API' : 'Other')),
     lastError: lastApiError,
-    stats: apiStats
+    stats: apiStats,
+    nodeEnv: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -121,10 +129,13 @@ app.post("/api/gemini/chat", async (req, res) => {
     apiStats.successfulCalls++;
 
     // Return the response structure expected by the client
+    // In @google/genai, .text() is a method
+    const text = response.text ? (typeof response.text === 'function' ? response.text() : response.text) : "";
+    
     res.json({
       candidates: response.candidates,
       usageMetadata: response.usageMetadata,
-      text: response.text
+      text: text
     });
   } catch (error: any) {
     console.error("Gemini API Error Detail:", {
@@ -132,15 +143,17 @@ app.post("/api/gemini/chat", async (req, res) => {
       status: error.status,
       code: error.code,
       details: error.details,
-      apiKeyPresent: !!process.env.GEMINI_API_KEY
+      apiKeyPresent: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
     });
     
-    lastApiError = { message: error.message || "Unknown API error", timestamp: Date.now() };
+    // Stringify complex error objects for better display in UI
+    const detailedMessage = typeof error.message === 'string' ? error.message : JSON.stringify(error);
+    lastApiError = { message: detailedMessage, timestamp: Date.now() };
     apiStats.failedCalls++;
 
     res.status(error.status || 500).json({ 
       error: {
-        message: error.message || "Failed to communicate with Gemini API",
+        message: detailedMessage,
         status: error.status,
         code: error.code
       }
