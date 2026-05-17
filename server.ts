@@ -118,8 +118,6 @@ apiRouter.post("/gemini/chat", async (req, res) => {
       }
     });
 
-    apiStats.successfulCalls++;
-
     // Return the response structure expected by the client
     res.json({
       candidates: response.candidates,
@@ -137,8 +135,6 @@ apiRouter.post("/gemini/chat", async (req, res) => {
     
     // Stringify complex error objects for better display in UI
     const detailedMessage = typeof error.message === 'string' ? error.message : JSON.stringify(error);
-    lastApiError = { message: detailedMessage, timestamp: Date.now() };
-    apiStats.failedCalls++;
 
     res.status(error.status || 500).json({ 
       error: {
@@ -167,8 +163,9 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support standard API prefix
+// Support standard API prefix and potential subdirectory prefix
 app.use("/api", apiRouter);
+app.use("/psychelense/api", apiRouter);
 
 async function startServer() {
   // Vite middleware for development
@@ -181,8 +178,14 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    // Also serve static files from the subdirectory path for safety
+    app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
+      // Don't serve index.html for API requests that missed the router
+      if (req.url.includes('/api/')) {
+        return res.status(404).json({ error: "API Route not found" });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
