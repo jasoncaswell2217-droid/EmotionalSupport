@@ -34,5 +34,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: psychelense/
+          server-dir: ./
           state-name: .ftp-deploy-sync-state.json
