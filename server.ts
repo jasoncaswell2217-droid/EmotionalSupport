@@ -42,7 +42,8 @@ let apiStats = {
 // Request logging middleware
 app.use((req, res, next) => {
   if (req.url.includes('/api/')) {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers['x-forwarded-for'] || req.ip)}`);
+    console.log(`[API REQUEST] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`[HEADERS] ${JSON.stringify(req.headers)}`);
   }
   next();
 });
@@ -51,7 +52,7 @@ app.use((req, res, next) => {
 const apiRouter = express.Router();
 
 apiRouter.use((req, res, next) => {
-  console.log(`API Router reached: ${req.method} ${req.url}`);
+  console.log(`[API ROUTER MATCHED] ${req.method} ${req.url}`);
   next();
 });
 
@@ -67,7 +68,8 @@ apiRouter.get("/health", (req, res) => {
     envUsed: process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : (process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : (process.env.VITE_GEMINI_API ? 'VITE_GEMINI_API' : 'Other')),
     lastError: lastApiError,
     stats: apiStats,
-    nodeEnv: process.env.NODE_ENV || 'development'
+    nodeEnv: process.env.NODE_ENV || 'development',
+    serverTime: new Date().toISOString()
   });
 });
 
@@ -172,12 +174,13 @@ apiRouter.post("/gemini/chat", async (req, res) => {
 
 // JSON 404 for API routes
 apiRouter.use((req, res) => {
+  console.warn(`[API 404] ${req.method} ${req.url}`);
   res.status(404).json({ error: { message: `API endpoint not found: ${req.method} ${req.url}`, status: 404 } });
 });
 
 // JSON Error handler for API routes
 apiRouter.use((err: any, req: any, res: any, next: any) => {
-  console.error("API Router Error:", err);
+  console.error("[API ERROR]", err);
   res.status(err.status || 500).json({ 
     error: { 
       message: err.message || "Internal server error in API router", 
@@ -187,9 +190,18 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
 });
 
 // Support various prefixing common in sub-directory deployments
-const apiPrefixes = ["/api", "/psychelense/api"];
+const apiPrefixes = ["/api", "/psychelense/api", "/psychelense/psychelense/api"];
 apiPrefixes.forEach(prefix => {
+  console.log(`Registering API prefix: ${prefix}`);
   app.use(prefix, apiRouter);
+});
+
+// Catch-all for API requests that missed everything before static files
+app.use((req, res, next) => {
+  if (req.url.includes('/api/')) {
+    console.warn(`[UNMATCHED API] ${req.method} ${req.url}`);
+  }
+  next();
 });
 
 async function startServer() {
