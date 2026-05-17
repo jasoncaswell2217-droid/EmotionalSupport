@@ -26,7 +26,9 @@ function getAi() {
   return aiClient;
 }
 
-app.use(express.json());
+// Increase limit for image uploads
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // API status tracking
 let lastApiError: { message: string; timestamp: number } | null = null;
@@ -39,12 +41,19 @@ let apiStats = {
 
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  if (req.url.includes('/api/')) {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  }
   next();
 });
 
 // API routes
 const apiRouter = express.Router();
+
+apiRouter.use((req, res, next) => {
+  console.log(`API Router reached: ${req.method} ${req.url}`);
+  next();
+});
 
 apiRouter.get("/health", (req, res) => {
   console.log("Health check requested");
@@ -85,7 +94,6 @@ apiRouter.post("/gemini/chat", async (req, res) => {
     
     const ai = getAi();
     
-    // Using ai.models.generateContent directly as per modern SDK guidelines
     // Handle message as parts array (from client) or single string
     const messageParts = Array.isArray(message) 
       ? message.map((p: any) => {
@@ -131,13 +139,10 @@ apiRouter.post("/gemini/chat", async (req, res) => {
     apiStats.successfulCalls++;
 
     // Return the response structure expected by the client
-    // In @google/genai, .text() is a method
-    const text = response.text ? (typeof response.text === 'function' ? response.text() : response.text) : "";
-    
     res.json({
       candidates: response.candidates,
       usageMetadata: response.usageMetadata,
-      text: text
+      text: response.text || ""
     });
   } catch (error: any) {
     console.error("Gemini API Error Detail:", {
@@ -161,6 +166,22 @@ apiRouter.post("/gemini/chat", async (req, res) => {
       }
     });
   }
+});
+
+// JSON 404 for API routes
+apiRouter.use((req, res) => {
+  res.status(404).json({ error: { message: `API endpoint not found: ${req.method} ${req.url}`, status: 404 } });
+});
+
+// JSON Error handler for API routes
+apiRouter.use((err: any, req: any, res: any, next: any) => {
+  console.error("API Router Error:", err);
+  res.status(err.status || 500).json({ 
+    error: { 
+      message: err.message || "Internal server error in API router", 
+      status: err.status || 500 
+    } 
+  });
 });
 
 // Support both root and /psychelense prefixed requests
