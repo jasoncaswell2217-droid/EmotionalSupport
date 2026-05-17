@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Gemini setup helper
 let aiClient: any = null;
@@ -186,28 +186,8 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support various prefixing common in sub-directory deployments
-const apiPrefixes = ["/api", "/psychelense/api", "/psychelense/psychelense/api"];
-apiPrefixes.forEach(prefix => {
-  app.use(prefix, apiRouter);
-});
-
-// Helper to check if a request is likely an API request that failed
-app.use((req, res, next) => {
-  const isApiRequest = req.url.includes('/api/') || apiPrefixes.some(p => req.url.startsWith(p));
-  if (isApiRequest) {
-    console.warn(`Unmatched API request: ${req.method} ${req.url}`);
-    return res.status(404).json({ 
-      error: { 
-        message: `API Route not found on this server: ${req.method} ${req.url}. If this is a sub-directory deployment, check BASE_URL config.`,
-        path: req.url,
-        status: 404,
-        availablePrefixes: apiPrefixes
-      } 
-    });
-  }
-  next();
-});
+// Support standard API prefix
+app.use("/api", apiRouter);
 
 async function startServer() {
   // Vite middleware for development
@@ -219,12 +199,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    // Serve static files from the root and the subdirectory
     app.use(express.static(distPath));
-    app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
-      // If request is for a file that wasn't found in static, it might be a SPA route
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
