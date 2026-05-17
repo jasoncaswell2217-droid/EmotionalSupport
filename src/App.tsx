@@ -3,6 +3,7 @@ import { Brain, FileText, Users, Activity, BarChart3, Database, Plus, UserPlus, 
 import { ChatMessage } from './components/ChatMessage';
 import { PsychInput } from './components/PsychInput';
 import { AuthLanding } from './components/AuthLanding';
+import { UserFeed } from './components/UserFeed';
 import { ApiStatusTracker } from './components/ApiStatusTracker';
 import { startChat, Message } from './services/gemini';
 import { motion, AnimatePresence } from 'motion/react';
@@ -17,10 +18,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const THEMES = [
   { id: 'cybercore', label: 'Cybercore', colors: ['#06b2d2', '#8b5cf6'] },
-  { id: 'clinical', label: 'Clinical', colors: ['#334155', '#64748b'] },
-  { id: 'organic', label: 'Organic', colors: ['#5a5a40', '#8a8a6a'] },
-  { id: 'dracula', label: 'Dracula', colors: ['#ff79c6', '#bd93f9'] },
-  { id: 'midnight-gold', label: 'Midnight Gold', colors: ['#d4af37', '#c5a028'] },
+  { id: 'dracula', label: 'Dracula', colors: ['#a855f7', '#6366f1'] },
+  { id: 'midnight-gold', label: 'Midnight Gold', colors: ['#eab308', '#facc15'] },
 ];
 
 interface Session {
@@ -31,7 +30,9 @@ interface Session {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'chat' | 'history' | 'analytics' | 'admin' | 'how-it-works'>('chat');
+  const [currentView, setCurrentView] = useState<'home' | 'chat' | 'history' | 'analytics' | 'admin' | 'how-it-works'>(() => {
+    return auth.currentUser ? 'home' : 'chat';
+  });
   const [settingsTab, setSettingsTab] = useState<'general' | 'theme'>('general');
   const [adminSubView, setAdminSubView] = useState<'overview' | 'monetization' | 'users' | 'content' | 'system'>('overview');
   const [pricingType, setPricingType] = useState<'subscriptions' | 'credits'>('subscriptions');
@@ -284,8 +285,12 @@ export default function App() {
       setIsAuthLoading(false);
       if (u) {
         setShowLanding(false);
+        if (currentView === 'chat') {
+          setCurrentView('home');
+        }
       } else {
         setShowLanding(true);
+        setCurrentView('chat');
       }
     });
   }, []);
@@ -1090,7 +1095,7 @@ export default function App() {
 
   if (isAuthLoading) {
     return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
+      <div className="h-screen w-screen bg-brand-bg flex items-center justify-center">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -1100,9 +1105,10 @@ export default function App() {
     );
   }
 
-  if (!user && showLanding && currentView !== 'how-it-works') {
+  if (!user && showLanding && currentView !== 'how-it-works' && currentView !== 'home') {
     return <AuthLanding 
       onShowHowItWorks={() => setCurrentView('how-it-works')} 
+      onShowPublicFeed={() => setCurrentView('home')}
       registrationEnabled={systemSettings.registrationEnabled}
       registrationDisabledMessage={systemSettings.registrationDisabledMessage}
     />;
@@ -1134,30 +1140,45 @@ export default function App() {
 
         {/* VIEW SWITCHER */}
         <div className="flex-1 flex items-center justify-center mx-2 md:mx-4 overflow-hidden">
-          {isDesktop && user && (
-            <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
+          {isDesktop && (
+            <div className="flex items-center bg-brand-surface/20 p-1 rounded-2xl border border-brand-border/30 overflow-x-auto no-scrollbar flex-nowrap max-w-full">
               <button 
                 onClick={() => {
-                  setCurrentView('chat');
+                  setCurrentView('home');
                 }}
                 className={cn(
                   "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                  currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                  currentView === 'home' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
                 )}
               >
-                <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
+                <Users size={14} /> <span className="hidden sm:inline">Home</span>
               </button>
-              <button 
-                onClick={() => {
-                  setCurrentView('analytics');
-                }}
-                className={cn(
-                  "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
-                  currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
-                )}
-              >
-                <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
-              </button>
+              {user && (
+                <>
+                  <button 
+                    onClick={() => {
+                      setCurrentView('chat');
+                    }}
+                    className={cn(
+                      "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                      currentView === 'chat' ? "bg-brand-cyan text-black shadow-lg shadow-brand-cyan/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <MessageSquare size={14} /> <span className="hidden sm:inline">Engine</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setCurrentView('analytics');
+                    }}
+                    className={cn(
+                      "px-3 md:px-5 py-2.5 rounded-[14px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
+                      currentView === 'analytics' ? "bg-brand-purple text-white shadow-lg shadow-brand-purple/20" : "text-brand-text-muted hover:text-brand-text"
+                    )}
+                  >
+                    <BarChart3 size={14} /> <span className="hidden sm:inline">Diagnostics</span>
+                  </button>
+                </>
+              )}
               <button 
                 onClick={() => {
                   setCurrentView('how-it-works');
@@ -1170,7 +1191,7 @@ export default function App() {
                 <BookOpen size={14} /> <span className="hidden lg:inline">How It Works</span>
               </button>
               
-              {role === 'admin' && (
+              {role === 'admin' && user && (
                 <button 
                   onClick={() => {
                     setCurrentView('admin');
@@ -1190,7 +1211,7 @@ export default function App() {
         <div className="flex items-center gap-2 md:gap-4 shrink-0 px-2">
           {/* CONTEXTUAL CHAT TOOLS */}
           {currentView === 'chat' && (
-            <div className="flex items-center gap-2 border-r border-white/5 pr-2 md:pr-4 mr-1">
+            <div className="flex items-center gap-2 border-r border-brand-border/40 pr-2 md:pr-4 mr-1">
               <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-brand-cyan/5 rounded-xl border border-brand-cyan/20 text-[8px] font-black text-brand-cyan uppercase tracking-widest">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-cyan opacity-75"></span>
@@ -1201,7 +1222,7 @@ export default function App() {
 
               <button 
                 onClick={handleDeleteClick}
-                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative bg-white/5 border border-white/10 text-brand-text-muted hover:text-brand-orange hover:bg-brand-orange/5"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-all group relative bg-brand-surface border border-brand-border text-brand-text-muted hover:text-brand-cyan hover:bg-brand-cyan/5"
                 title="Purge Active Session"
               >
                 <Trash2 size={18} />
@@ -1216,10 +1237,10 @@ export default function App() {
                  <span className="uppercase tracking-widest font-black text-brand-text truncate max-w-[120px] leading-tight">{user.email?.split('@')[0]}</span>
                  {role === 'admin' && <span className="text-[7px] text-brand-cyan font-black uppercase italic">Administrator</span>}
                </div>
-               <div className="w-[1px] h-4 bg-white/10" />
+               <div className="w-[1px] h-4 bg-brand-border/20" />
                <button 
                  onClick={() => signOut(auth)} 
-                 className="px-3 py-1.5 flex items-center gap-2 hover:text-brand-cyan transition-colors bg-white/5 border border-white/10 rounded-xl group" 
+                 className="px-3 py-1.5 flex items-center gap-2 hover:text-brand-cyan transition-colors bg-brand-surface border border-brand-border rounded-xl group" 
                  title="Secure System Exit"
                >
                  <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -1238,7 +1259,7 @@ export default function App() {
           {user && (
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-white/5 hover:text-brand-text transition-all group shrink-0"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-brand-text-muted hover:bg-brand-surface hover:text-brand-text transition-all group shrink-0"
               title="System Configuration"
             >
               <Settings size={20} className="group-hover:rotate-45 transition-transform" />
@@ -1256,7 +1277,7 @@ export default function App() {
               animate={{ width: isSidebarExpanded ? 280 : 70 }}
               className="bg-bento-bg border-r border-bento-border flex flex-col z-40 relative shrink-0"
             >
-              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+              <div className="p-4 border-b border-brand-border/40 flex items-center justify-between">
                 {isSidebarExpanded && (
                   <motion.span 
                     initial={{ opacity: 0 }}
@@ -1268,7 +1289,7 @@ export default function App() {
                 )}
                 <button 
                   onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
-                  className="p-2 hover:bg-white/5 rounded-xl text-brand-text-muted transition-colors mx-auto lg:mx-0"
+                  className="p-2 hover:bg-brand-surface rounded-xl text-brand-text-muted transition-colors mx-auto lg:mx-0"
                 >
                   {isSidebarExpanded ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
                 </button>
@@ -1298,7 +1319,7 @@ export default function App() {
                         "w-full flex items-center gap-4 p-3 rounded-2xl transition-all relative group cursor-pointer",
                         currentSessionId === session.id 
                           ? "bg-brand-cyan/10 text-brand-cyan border-brand-cyan/20" 
-                          : "text-brand-text-muted hover:bg-white/5",
+                          : "text-brand-text-muted hover:bg-brand-surface",
                         !isSidebarExpanded && "justify-center px-0"
                       )}
                     >
@@ -1328,7 +1349,7 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="p-4 border-t border-white/5">
+              <div className="p-4 border-t border-brand-border/40">
                  <div className={cn("flex flex-col gap-4", !isSidebarExpanded ? "items-center" : "")}>
                    <button 
                      onClick={() => setIsSettingsOpen(true)}
@@ -1341,12 +1362,12 @@ export default function App() {
                      {isSidebarExpanded && <span className="text-[11px] font-black uppercase tracking-widest">Config</span>}
                    </button>
                    {isSidebarExpanded && userProfile && (
-                     <div className="bg-white/5 rounded-2xl p-4 space-y-2">
+                     <div className="bg-brand-surface rounded-2xl p-4 space-y-2">
                         <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-brand-text-muted">
                            <span>Uplink Status</span>
                            <span className="text-brand-cyan">{userProfile.credits ?? 0}</span>
                         </div>
-                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-1 w-full bg-brand-surface-2 rounded-full overflow-hidden">
                            <div 
                              className="h-full bg-brand-cyan shadow-[0_0_8px_var(--theme-accent-1)]" 
                              style={{ width: `${Math.min(100, ((userProfile.credits ?? 0) / (userProfile.maxCredits || 5)) * 100)}%` }}
@@ -1378,14 +1399,14 @@ export default function App() {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className="fixed left-0 top-0 bottom-0 w-[85%] max-w-[320px] bg-bento-bg border-r border-bento-border z-[70] flex flex-col"
               >
-                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <div className="p-6 border-b border-brand-border/40 flex items-center justify-between">
                    <div className="flex items-center gap-3">
                       <History size={20} className="text-brand-cyan" />
                       <span className="text-sm font-black uppercase tracking-widest text-brand-text">Session Archive</span>
                    </div>
                    <button 
                      onClick={() => setIsMobileMenuOpen(false)}
-                     className="p-2 hover:bg-white/5 rounded-xl text-brand-text-muted"
+                     className="p-2 hover:bg-brand-surface rounded-xl text-brand-text-muted"
                    >
                      <X size={20} />
                    </button>
@@ -1393,33 +1414,50 @@ export default function App() {
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* MOBILE NAV LINKS */}
-                  <div className="grid grid-cols-2 gap-3 pb-6 border-b border-white/5">
+                  <div className="grid grid-cols-2 gap-3 pb-6 border-b border-brand-border/40">
                     <button 
                       onClick={() => {
-                        setCurrentView('chat');
+                        setCurrentView('home');
                         setIsMobileMenuOpen(false);
                       }}
                       className={cn(
                         "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
-                        currentView === 'chat' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-white/5 border-white/5 text-brand-text-muted"
+                        currentView === 'home' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
                       )}
                     >
-                      <MessageSquare size={20} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Engine</span>
+                      <Users size={20} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
                     </button>
-                    <button 
-                      onClick={() => {
-                        setCurrentView('analytics');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
-                        currentView === 'analytics' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-white/5 border-white/5 text-brand-text-muted"
-                      )}
-                    >
-                      <BarChart3 size={20} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Analytics</span>
-                    </button>
+                    {user && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setCurrentView('chat');
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                            currentView === 'chat' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
+                          )}
+                        >
+                          <MessageSquare size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Engine</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setCurrentView('analytics');
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
+                            currentView === 'analytics' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
+                          )}
+                        >
+                          <BarChart3 size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Analytics</span>
+                        </button>
+                      </>
+                    )}
                     <button 
                       onClick={() => {
                         setCurrentView('how-it-works');
@@ -1427,13 +1465,13 @@ export default function App() {
                       }}
                       className={cn(
                         "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
-                        currentView === 'how-it-works' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-white/5 border-white/5 text-brand-text-muted"
+                        currentView === 'how-it-works' ? "bg-brand-purple/20 border-brand-purple/40 text-brand-purple" : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
                       )}
                     >
                       <BookOpen size={20} />
                       <span className="text-[10px] font-black uppercase tracking-widest">Guide</span>
                     </button>
-                    {role === 'admin' && (
+                    {role === 'admin' && user && (
                       <button 
                         onClick={() => {
                           setCurrentView('admin');
@@ -1441,7 +1479,7 @@ export default function App() {
                         }}
                         className={cn(
                           "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all",
-                          currentView === 'admin' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-white/5 border-white/5 text-brand-text-muted"
+                          currentView === 'admin' ? "bg-brand-cyan/20 border-brand-cyan/40 text-brand-cyan" : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
                         )}
                       >
                         <Shield size={20} />
@@ -1474,7 +1512,7 @@ export default function App() {
                           "w-full flex items-center gap-4 p-4 rounded-2xl transition-all border cursor-pointer",
                           currentSessionId === session.id 
                             ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan" 
-                            : "bg-white/5 border-white/5 text-brand-text-muted"
+                            : "bg-brand-surface border-brand-border/30 text-brand-text-muted"
                         )}
                       >
                         <MessageSquare size={18} className={currentSessionId === session.id ? "text-brand-cyan" : "text-brand-text-muted/40"} />
@@ -1493,7 +1531,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="p-6 border-t border-white/5 space-y-4">
+                <div className="p-6 border-t border-brand-border/40 space-y-4">
                   <button 
                     onClick={() => {
                       setIsSettingsOpen(true);
@@ -1517,6 +1555,21 @@ export default function App() {
 
         <div className="flex-1 flex flex-col min-w-0 relative">
           {/* Main Content Areas */}
+          {currentView === 'home' && (
+             <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg overflow-y-auto custom-scrollbar">
+               <UserFeed 
+                 user={user} 
+                 userProfile={userProfile} 
+                 role={role}
+                 onBack={() => {
+                   setShowLanding(true);
+                   setCurrentView('chat');
+                 }}
+                 showToast={showToast} 
+               />
+             </main>
+          )}
+
           {currentView === 'admin' && role === 'admin' && (
         <main className="flex-1 flex flex-col relative overflow-hidden bg-bento-bg p-4 md:p-12 overflow-y-auto custom-scrollbar">
           <ApiStatusTracker variant="minimal" />
@@ -1537,7 +1590,7 @@ export default function App() {
               </div>
             </header>
 
-            <nav className="w-full bg-black/40 p-1 rounded-2xl border border-white/5 overflow-hidden">
+            <nav className="w-full bg-brand-surface/20 p-1 rounded-2xl border border-brand-border/30 overflow-hidden">
                <div className="flex w-full gap-1">
                   <button 
                     onClick={() => setAdminSubView('overview')}

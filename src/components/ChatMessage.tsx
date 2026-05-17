@@ -134,7 +134,7 @@ export const ChatMessage = memo(function ChatMessage({ id, role, content, parts,
 
               {content && (
                 <div className={cn(
-                  "prose prose-brand max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 text-[13px] md:text-[15.5px] tracking-wide text-brand-text break-words overflow-x-hidden",
+                  "prose prose-brand max-w-none prose-p:leading-relaxed prose-pre:bg-brand-surface text-[13px] md:text-[15.5px] tracking-wide text-brand-text break-words overflow-x-hidden",
                   "!text-brand-text w-full" // Force color to match theme
                 )}>
                   <ReactMarkdown>{displayContent || ""}</ReactMarkdown>

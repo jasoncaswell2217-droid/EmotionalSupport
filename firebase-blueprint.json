@@ -83,9 +83,30 @@
         "timestamp": { "type": "number" }
       },
       "required": ["messageId", "isAccurate", "userId", "timestamp"]
+    },
+    "FeedPost": {
+      "title": "FeedPost",
+      "description": "A post in the user community feed.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "isPublic": { "type": "boolean" },
+        "postType": { "type": "string", "enum": ["Changes Made", "Upcoming", "The Vision"] },
+        "userRole": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["userId", "content", "timestamp", "isPublic"]
     }
   },
   "firestore": {
+    "/feed/{postId}": {
+      "schema": "FeedPost",
+      "description": "Public community feed posts."
+    },
     "/feedback/{feedbackId}": {
       "schema": "Feedback",
       "description": "Log of user feedback on responses."

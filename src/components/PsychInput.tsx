@@ -134,18 +134,18 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 px-2 md:px-0">
           {images.map((img, idx) => (
-            <div key={idx} className="relative group/img w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden border border-white/10 shadow-2xl shrink-0">
+            <div key={idx} className="relative group/img w-14 h-14 md:w-16 md:h-16 rounded-xl overflow-hidden border border-brand-border shadow-2xl shrink-0">
               <img src={`data:image/jpeg;base64,${img}`} className="w-full h-full object-cover" alt="Preview" />
               <button 
                 onClick={() => removeImage(idx)}
-                className="absolute top-1 right-1 bg-black/60 backdrop-blur-md rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-all hover:scale-110"
+                className="absolute top-1 right-1 bg-brand-surface/80 backdrop-blur-md rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-all hover:scale-110"
               >
-                <X size={12} className="text-white" />
+                <X size={12} className="text-brand-text" />
               </button>
             </div>
           ))}
           {isProcessingImage && (
-            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-white/5 flex items-center justify-center animate-pulse border border-white/10">
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-brand-surface flex items-center justify-center animate-pulse border border-brand-border">
               <Loader2 size={16} className="text-brand-cyan animate-spin" />
             </div>
           )}
@@ -162,7 +162,7 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || images.length >= 4}
-            className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-brand-text-muted hover:text-brand-cyan transition-all hover:scale-105 active:scale-95 shadow-xl"
+            className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-brand-surface hover:bg-brand-surface-2 border border-brand-border flex items-center justify-center text-brand-text-muted hover:text-brand-cyan transition-all hover:scale-105 active:scale-95 shadow-xl"
             title="Attach images"
           >
             <ImageIcon size={18} className="md:w-5 md:h-5" />
@@ -179,8 +179,8 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
 
         {/* Input Bar Pill */}
         <div className={cn(
-          "flex-1 min-w-0 flex items-end bg-white/10 md:bg-black/60 backdrop-blur-xl border rounded-[24px] md:rounded-[32px] px-3 md:px-6 py-1 md:py-2 transition-all duration-300 group",
-          isFocused ? "border-brand-cyan/60 shadow-[0_0_30px_rgba(6,178,210,0.2)] ring-1 ring-brand-cyan/30 bg-white/15" : "border-white/25 md:border-white/15"
+          "flex-1 min-w-0 flex items-end bg-brand-surface backdrop-blur-xl border rounded-[24px] md:rounded-[32px] px-3 md:px-6 py-1 md:py-2 transition-all duration-300 group",
+          isFocused ? "border-brand-cyan/60 shadow-[0_0_30px_rgba(6,178,210,0.2)] ring-1 ring-brand-cyan/30 bg-brand-surface-2" : "border-brand-border/40"
         )}>
           <textarea
             ref={textareaRef}
@@ -204,7 +204,7 @@ export function PsychInput({ onSend, onMoodUpdate, disabled }: PsychInputProps) 
             className={cn(
               "w-11 h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-2xl",
               (!text.trim() && images.length === 0) || disabled
-                ? "bg-white/5 text-white/20 border border-white/5"
+                ? "bg-brand-surface text-brand-text-muted/30 border border-brand-border"
                 : "bg-brand-purple text-white shadow-[0_4px_15px_rgba(188,19,254,0.4)] hover:shadow-[0_4px_25px_rgba(188,19,254,0.6)]"
             )}
             title="Send Message"

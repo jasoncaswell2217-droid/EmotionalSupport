@@ -26,12 +26,14 @@ import { cn } from '../lib/utils';
 
 interface AuthLandingProps {
   onShowHowItWorks?: () => void;
+  onShowPublicFeed?: () => void;
   registrationEnabled?: boolean;
   registrationDisabledMessage?: string;
 }
 
 export function AuthLanding({ 
   onShowHowItWorks, 
+  onShowPublicFeed,
   registrationEnabled = true, 
   registrationDisabledMessage = "Registration Disabled By The Admins" 
 }: AuthLandingProps) {
@@ -83,7 +85,7 @@ export function AuthLanding({
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-black text-brand-text flex flex-col items-center justify-start lg:justify-center relative overflow-y-auto overflow-x-hidden font-sans custom-scrollbar selection:bg-brand-cyan/30">
+    <div className="min-h-[100dvh] w-full bg-brand-bg text-brand-text flex flex-col items-center justify-start lg:justify-center relative overflow-y-auto overflow-x-hidden font-sans custom-scrollbar selection:bg-brand-cyan/30">
       {/* Dynamic Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-brand-cyan/10 blur-[150px] animate-pulse" />
@@ -161,7 +163,7 @@ export function AuthLanding({
         >
           <div className="absolute -inset-4 bg-gradient-to-r from-brand-cyan/20 to-brand-purple/20 blur-3xl opacity-30 rounded-full" />
           
-          <div className="bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
+          <div className="bg-brand-card border border-brand-border rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-cyan to-transparent opacity-50" />
             
             <AnimatePresence mode="wait">
@@ -185,7 +187,7 @@ export function AuthLanding({
                   </div>
 
                   {/* System Message Section */}
-                  {(!registrationEnabled || registrationEnabled) && (
+                  {((!registrationEnabled && mode === 'register') || (registrationEnabled && mode === 'login')) && (
                     <div className={cn(
                       "p-4 rounded-2xl flex items-start gap-4 transition-all duration-500",
                       !registrationEnabled ? "bg-orange-500/10 border border-orange-500/20" : "bg-brand-cyan/5 border border-brand-cyan/10"
@@ -200,15 +202,15 @@ export function AuthLanding({
                       <div className="space-y-1">
                         <span className={cn(
                           "text-[9px] font-black uppercase tracking-widest",
-                          !registrationEnabled ? "text-orange-500" : "text-brand-cyan"
+                          (!registrationEnabled && mode === 'register') ? "text-orange-500" : "text-brand-cyan"
                         )}>
-                          {registrationEnabled ? 'Uplink Status: Active' : 'Uplink Status: Restricted'}
+                          {(registrationEnabled) ? 'Uplink Status: Active' : 'Uplink Status: Restricted'}
                         </span>
                         <p className={cn(
                           "text-xs leading-relaxed italic",
-                          !registrationEnabled ? "text-brand-text" : "text-brand-text-muted opacity-60"
+                          (!registrationEnabled && mode === 'register') ? "text-brand-text" : "text-brand-text-muted opacity-60"
                         )}>
-                          "{registrationDisabledMessage}"
+                          "{registrationEnabled ? "Secure link established." : registrationDisabledMessage}"
                         </p>
                       </div>
                     </div>
@@ -224,7 +226,7 @@ export function AuthLanding({
                           required
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all"
+                          className="w-full bg-brand-surface border border-brand-border rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all"
                         />
                       </div>
                       <div className="relative group">
@@ -235,7 +237,7 @@ export function AuthLanding({
                           required
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all text-brand-text"
+                          className="w-full bg-brand-surface border border-brand-border rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all text-brand-text"
                         />
                       </div>
                     </div>
@@ -265,34 +267,42 @@ export function AuthLanding({
 
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-white/10"></div>
+                      <div className="w-full border-t border-brand-border"></div>
                     </div>
                     <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-brand-text-muted">
-                      <span className="bg-[#0a0a0a] px-4">Secondary Uplink</span>
+                      <span className="bg-brand-card px-4">Secondary Uplink</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <button 
-                      onClick={handleGoogleSignIn}
-                      disabled={isLoading}
-                      className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl py-4 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-                    >
-                      <Chrome size={18} className="text-brand-cyan" />
-                      <span className="text-xs uppercase font-bold tracking-widest">Connect with Google</span>
-                    </button>
-                    
-                    {onShowHowItWorks && (
-                      <div className="flex flex-col gap-3">
-                        <button 
-                          onClick={onShowHowItWorks}
-                          className="px-6 py-2 border border-white/10 rounded-xl text-[10px] text-brand-cyan uppercase tracking-widest font-black transition-all hover:bg-brand-cyan/5 hover:border-brand-cyan/30"
-                        >
-                          How It Works
-                        </button>
+                    <div className="grid grid-cols-1 gap-4">
+                      <button 
+                        onClick={handleGoogleSignIn}
+                        disabled={isLoading}
+                        className="w-full bg-brand-surface hover:bg-brand-surface-2 border border-brand-border rounded-2xl py-4 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                      >
+                        <Chrome size={18} className="text-brand-cyan" />
+                        <span className="text-xs uppercase font-bold tracking-widest">Connect with Google</span>
+                      </button>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        {onShowHowItWorks && (
+                          <button 
+                            onClick={onShowHowItWorks}
+                            className="px-4 py-3 border border-white/10 rounded-xl text-[10px] text-brand-text-muted hover:text-brand-cyan uppercase tracking-widest font-black transition-all hover:bg-brand-cyan/5 hover:border-brand-cyan/30"
+                          >
+                            How It Works
+                          </button>
+                        )}
+                        {onShowPublicFeed && (
+                          <button 
+                            onClick={onShowPublicFeed}
+                            className="px-4 py-3 border border-brand-cyan/20 rounded-xl text-[10px] text-brand-cyan uppercase tracking-widest font-black transition-all bg-brand-cyan/5 hover:bg-brand-cyan/10 hover:border-brand-cyan/40"
+                          >
+                            View Feed
+                          </button>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
 
                   <div className="flex flex-col items-center gap-3 pt-2">
                     <button 
@@ -310,7 +320,7 @@ export function AuthLanding({
                       )}
                     >
                       {mode === 'login' ? <UserPlus size={14} /> : <LogIn size={14} />}
-                      <span>{mode === 'login' ? "Don't have an account? Register" : "Already registered? Identity Login"}</span>
+                      <span>{mode === 'login' ? (registrationEnabled ? "Don't have an account? Register" : "Registration restricted by admin") : "Already registered? Identity Login"}</span>
                     </button>
                     {mode === 'login' && (
                        <button 
@@ -352,7 +362,7 @@ export function AuthLanding({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all"
+                        className="w-full bg-brand-surface border border-brand-border rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-cyan/50 focus:border-brand-cyan/50 transition-all"
                       />
                     </div>
 
@@ -385,7 +395,7 @@ export function AuthLanding({
       <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       
       {/* Footer Disclaimer for Mobile */}
-      <div className="w-full px-6 py-6 border-t border-white/5 mt-auto bg-black lg:hidden z-10">
+      <div className="w-full px-6 py-6 border-t border-brand-border mt-auto bg-brand-bg lg:hidden z-10">
         <p className="text-[9px] text-brand-text-muted leading-relaxed text-center uppercase tracking-widest opacity-40">
           Educational Support Framework • Not a Clinical Service • v1.2.6-admin
         </p>
