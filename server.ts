@@ -33,60 +33,38 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Performance and Request logging middleware
 app.use((req, res, next) => {
-  const start = Date.now();
-  const isApi = req.url.includes('/api/');
-  
-  if (isApi) {
-    console.log(`[INCOMING] ${req.method} ${req.url}`);
-  }
-  
-  res.on('finish', () => {
-    if (isApi || res.statusCode >= 400) {
+  if (req.url.includes('/api/')) {
+    const start = Date.now();
+    res.on('finish', () => {
       const duration = Date.now() - start;
-      console.log(`[RESPONSE] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
-    }
-  });
+      console.log(`[API] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    });
+  }
   next();
 });
 
 // API routes
 const apiRouter = express.Router();
 
-apiRouter.use((req, res, next) => {
-  console.log(`[API ROUTER MATCHED] ${req.method} ${req.url}`);
-  next();
-});
-
 // ... health and chat routes ...
 
 apiRouter.get("/health", (req, res) => {
-  console.log("Health check requested");
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   res.json({ 
     status: "ok", 
     hasKey: !!apiKey,
-    keyLength: apiKey?.length || 0,
-    envUsed: process.env.GEMINI_API_KEY ? 'GEMINI_API_KEY' : (process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : (process.env.VITE_GEMINI_API ? 'VITE_GEMINI_API' : 'Other')),
-    lastError: lastApiError,
-    stats: apiStats,
-    nodeEnv: process.env.NODE_ENV || 'development',
-    serverTime: new Date().toISOString()
+    nodeEnv: process.env.NODE_ENV || 'development'
   });
 });
 
 apiRouter.post("/gemini/chat", async (req, res) => {
-  console.log("!!! Gemini Chat Route Triggered !!!");
   const { history, message, systemInstruction, tools } = req.body;
   
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    const errorMsg = "Gemini API key is missing from environment variables.";
-    console.error(errorMsg);
-    lastApiError = { message: errorMsg, timestamp: Date.now() };
-    apiStats.failedCalls++;
     return res.status(500).json({ 
       error: {
-        message: "Gemini API key is not set on the server. Please check Settings > Secrets and ensure GEMINI_API_KEY is defined.",
+        message: "Gemini API key is not set. Please check your environment variables.",
         status: 500
       }
     });
@@ -180,37 +158,17 @@ apiRouter.use((req, res) => {
 
 // JSON Error handler for API routes
 apiRouter.use((err: any, req: any, res: any, next: any) => {
-  console.error("[API ERROR]", err);
+  console.error("API Error:", err);
   res.status(err.status || 500).json({ 
     error: { 
-      message: err.message || "Internal server error in API router", 
+      message: err.message || "Internal server error", 
       status: err.status || 500 
     } 
   });
 });
 
-// Improved Prefix handling: match /api regardless of what comes before it in the path
-app.use((req, res, next) => {
-  const url = req.url;
-  // If it's an API call, we want to make sure it gets to the apiRouter
-  // Even if the prefix is slightly different than expected
-  if (url.includes('/api/')) {
-    console.log(`[ROUTING] API path detected: ${url}`);
-    
-    // If it's like /psychelense/api/..., strip the /psychelense/ prefix for the router
-    if (url.startsWith('/psychelense/api/')) {
-       req.url = url.replace('/psychelense', '');
-       console.log(`[ROUTING] Rewrote URL to: ${req.url}`);
-       return apiRouter(req, res, next);
-    }
-  }
-  next();
-});
-
-const apiPrefixes = ["/api", "/psychelense/api"];
-apiPrefixes.forEach(prefix => {
-  app.use(prefix, apiRouter);
-});
+// Support standard API prefix
+app.use("/api", apiRouter);
 
 async function startServer() {
   // Vite middleware for development
@@ -222,22 +180,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    // Serve static files from the root and the subdirectory
     app.use(express.static(distPath));
-    app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
-      // Avoid serving index.html for API requests that were never matched
-      if (req.url.includes('/api/')) {
-        console.warn(`[API 404 Catch-all] ${req.method} ${req.url}`);
-        return res.status(404).json({ 
-          error: { 
-            message: `API Route not found: ${req.method} ${req.url}`, 
-            status: 404,
-            suggestion: "Check if the server is omitting the base path in API requests"
-          } 
-        });
-      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
