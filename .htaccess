@@ -1,0 +1,12 @@
+# cPanel Node.js Selector fallback
+# Ensure that requests to /api/ are NOT handled by this fallback
+RewriteEngine On
+RewriteBase /psychelense/
+
+# Pass through API requests directly to the Node.js application
+RewriteRule ^api/ - [L,NC]
+
+# SPA Fallback: If the request is not for a real file or directory, serve index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]
