@@ -74,8 +74,11 @@ const requestInformationTool = {
 export const startChat = () => {
   return {
     sendMessage: async ({ message, history = [] }: { message: any, history?: Message[] }) => {
-      // Use relative path to work correctly regardless of base path
-      const response = await fetch("api/gemini/chat", {
+      // Use BASE_URL from Vite config to handle sub-directory deployments correctly
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const endpoint = `${baseUrl}api/gemini/chat`.replace(/\/+/g, '/');
+      
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,7 +97,14 @@ export const startChat = () => {
         } else {
           const text = await response.text();
           console.error("Non-JSON error response:", text.substring(0, 500));
-          errorData = { error: { message: `Server error: ${response.status} ${response.statusText}`, status: response.status } };
+          
+          // Detect if we got HTML (likely SPA fallback because backend isn't handling the route)
+          const isHtml = text.trim().toLowerCase().startsWith("<!doctype html") || text.includes("<html");
+          const errorMsg = isHtml 
+            ? "The server returned an HTML page instead of JSON. This usually happens when the backend Express server is not running or the API route is not correctly configured in your hosting environment (e.g., CPanel/Apache). Ensure the Node.js process is active and handling /api routes."
+            : `Server error: ${response.status} ${response.statusText}`;
+            
+          errorData = { error: { message: errorMsg, status: response.status, path: endpoint } };
         }
         throw errorData;
       }
@@ -102,8 +112,17 @@ export const startChat = () => {
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
-        console.error("Expected JSON but received:", text.substring(0, 500));
-        throw { error: { message: "Unexpected server response format. The server might be misconfigured.", status: 500 } };
+        const isHtml = text.trim().toLowerCase().startsWith("<!doctype html") || text.includes("<html");
+        
+        throw { 
+          error: { 
+            message: isHtml 
+              ? "Backend routing error: Received HTML instead of JSON. Verify that your server (dist/server.cjs) is running and accessible." 
+              : "Unexpected server response format.", 
+            status: 500,
+            path: endpoint
+          } 
+        };
       }
 
       return await response.json();

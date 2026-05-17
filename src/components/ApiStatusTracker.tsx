@@ -28,8 +28,10 @@ export function ApiStatusTracker({ variant = 'full' }: { variant?: 'full' | 'min
   const checkHealth = async () => {
     setIsLoading(true);
     try {
-      // Use relative path to work correctly regardless of base path
-      const response = await fetch("api/health");
+      // Use BASE_URL from Vite config to handle sub-directory deployments correctly
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const endpoint = `${baseUrl}api/health`.replace(/\/+/g, '/');
+      const response = await fetch(endpoint);
       if (!response.ok) throw new Error(`API Unreachable: ${response.status}`);
       const data = await response.json();
       setHealth(data);

@@ -187,19 +187,22 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
 });
 
 // Support various prefixing common in sub-directory deployments
-app.use("/api", apiRouter);
-app.use("/psychelense/api", apiRouter);
-app.use("/psychelense/psychelense/api", apiRouter); // Catch double-prefixing quirks
+const apiPrefixes = ["/api", "/psychelense/api", "/psychelense/psychelense/api"];
+apiPrefixes.forEach(prefix => {
+  app.use(prefix, apiRouter);
+});
 
 // Helper to check if a request is likely an API request that failed
 app.use((req, res, next) => {
-  if (req.url.includes('/api/')) {
+  const isApiRequest = req.url.includes('/api/') || apiPrefixes.some(p => req.url.startsWith(p));
+  if (isApiRequest) {
     console.warn(`Unmatched API request: ${req.method} ${req.url}`);
     return res.status(404).json({ 
       error: { 
         message: `API Route not found on this server: ${req.method} ${req.url}. If this is a sub-directory deployment, check BASE_URL config.`,
         path: req.url,
-        status: 404 
+        status: 404,
+        availablePrefixes: apiPrefixes
       } 
     });
   }
