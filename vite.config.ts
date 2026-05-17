@@ -7,6 +7,9 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: '/psychelense/',
+    build: {
+      outDir: 'out',
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
