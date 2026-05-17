@@ -108,15 +108,17 @@ service cloud.firestore {
 
     function isValidFeedPost(data) {
       return data.keys().hasAll(['userId', 'content', 'timestamp', 'isPublic'])
-        && data.userId == request.auth.uid
+        && data.userId is string
         && data.content is string && data.content.size() <= 2000
         && data.timestamp is int
         && data.isPublic is bool
-        && (!data.keys().contains('postType') || data.postType in ['Changes Made', 'Upcoming', 'The Vision'])
+        && (!data.keys().contains('postType') || data.postType == null || data.postType in ['Changes Made', 'Upcoming', 'The Vision'])
         && (!data.keys().contains('userRole') || data.userRole in ['user', 'admin'])
         && (!data.keys().contains('imageUrl') || data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() < 1500000))
+        && (!data.keys().contains('fullDisplayUrl') || data.fullDisplayUrl == null || (data.fullDisplayUrl is string && data.fullDisplayUrl.size() < 1500000))
         && (!data.keys().contains('userName') || data.userName == null || (data.userName is string && data.userName.size() <= 128))
-        && (!data.keys().contains('userAvatar') || data.userAvatar == null || (data.userAvatar is string && data.userAvatar.size() <= 2048));
+        && (!data.keys().contains('userAvatar') || data.userAvatar == null || (data.userAvatar is string && data.userAvatar.size() <= 2048))
+        && (!data.keys().contains('reactions') || data.reactions is map);
     }
 
     // --- Matches ---
@@ -125,8 +127,11 @@ service cloud.firestore {
                    (isSignedIn() && (existing().userId == request.auth.uid || isAdmin()));
       allow create: if isSignedIn() && isValidFeedPost(incoming()) && (
         incoming().userRole == 'user' || (incoming().userRole == 'admin' && isAdmin())
+      ) && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        ((existing().userId == request.auth.uid || isAdmin()) && isValidFeedPost(incoming()) && incoming().userId == existing().userId) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['reactions']) && incoming().reactions is map)
       );
-      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidFeedPost(incoming());
       allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
 

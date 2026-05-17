@@ -97,7 +97,14 @@
         "timestamp": { "type": "number" },
         "isPublic": { "type": "boolean" },
         "postType": { "type": "string", "enum": ["Changes Made", "Upcoming", "The Vision"] },
-        "userRole": { "type": "string", "enum": ["user", "admin"] }
+        "userRole": { "type": "string", "enum": ["user", "admin"] },
+        "reactions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
       },
       "required": ["userId", "content", "timestamp", "isPublic"]
     }

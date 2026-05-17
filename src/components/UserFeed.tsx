@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ImageIcon, Trash2, Edit2, Send, X, Heart, MessageSquare, User as UserIcon, Sparkles, Globe, Lock, HelpCircle, ChevronLeft } from 'lucide-react';
+import { ImageIcon, Trash2, Edit2, Send, X, Heart, MessageSquare, User as UserIcon, Sparkles, Globe, Lock, HelpCircle, ChevronLeft, Loader2, ThumbsUp } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, where, or } from 'firebase/firestore';
 import { cn } from '../lib/utils';
+import { processImageForFeed, ProcessedImage } from '../lib/imageProcessor';
+import { BroadcastImage } from './BroadcastImage';
 
 interface FeedPost {
   id: string;
@@ -11,11 +13,13 @@ interface FeedPost {
   userName?: string;
   userAvatar?: string;
   content: string;
-  imageUrl?: string;
+  imageUrl?: string; 
+  fullDisplayUrl?: string; 
   timestamp: any;
   isPublic: boolean;
   postType?: 'Changes Made' | 'Upcoming' | 'The Vision';
   userRole?: string;
+  reactions?: Record<string, string[]>;
 }
 
 interface UserFeedProps {
@@ -26,10 +30,15 @@ interface UserFeedProps {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+const REACTION_TYPES = [
+  { emoji: <ThumbsUp size={18} />, label: 'like' }
+];
+
 export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFeedProps) {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<ProcessedImage | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [postType, setPostType] = useState<'Post Type' | 'Changes Made' | 'Upcoming' | 'The Vision'>('Post Type');
@@ -63,34 +72,62 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedPosts = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as FeedPost));
       setPosts(fetchedPosts);
-      setNewPostContent('');
-      setSelectedImage(null);
-      setIsPublic(false);
-      setPostType('Post Type');
     }, (error) => {
       console.error("Feed snapshot error:", error);
-      // Only show toast for non-permission errors or if we really want it
       if (error.code !== 'permission-denied') {
         showToast("Feed sync failed", "error");
       }
     });
     return () => unsubscribe();
-  }, [showToast]);
+  }, [user, showToast]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 500000) { // Limit to ~500KB for base64 storage in Firestore
-      showToast("Image too large (max 500KB)", "error");
+    setIsProcessingImage(true);
+    try {
+      const processed = await processImageForFeed(file);
+      setSelectedImage(processed);
+      showToast("Media optimized for broadcast", "success");
+    } catch (err) {
+      console.error("Image processing error:", err);
+      showToast("Failed to process image", "error");
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleReaction = async (postId: string, reactionType: string) => {
+    if (!user) {
+      showToast("Login to react", "info");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setSelectedImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    try {
+      const reactions = { ...(post.reactions || {}) };
+      const currentUsers = reactions[reactionType] || [];
+      const userIndex = currentUsers.indexOf(user.uid);
+
+      if (userIndex > -1) {
+        // Remove reaction
+        currentUsers.splice(userIndex, 1);
+      } else {
+        // Add reaction
+        currentUsers.push(user.uid);
+      }
+
+      reactions[reactionType] = currentUsers;
+
+      const postRef = doc(db, 'feed', postId);
+      await updateDoc(postRef, { reactions });
+    } catch (error) {
+      console.error("Reaction error:", error);
+      showToast("Signal failed to transmit", "error");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,16 +139,19 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
     try {
       const postData: any = {
         content: newPostContent,
-        imageUrl: selectedImage || null,
+        imageUrl: selectedImage?.feedThumb || null,
+        fullDisplayUrl: selectedImage?.fullDisplay || null,
         timestamp: Date.now(),
         isPublic: isPublic,
         postType: postType === 'Post Type' ? null : postType,
-        userRole: role || 'user'
+        userRole: role || 'user',
+        reactions: {}
       };
 
       if (editingPost) {
         const postRef = doc(db, 'feed', editingPost.id);
-        await updateDoc(postRef, postData);
+        const { reactions, ...updateData } = postData; // Don't reset reactions on edit
+        await updateDoc(postRef, updateData);
         showToast("Insight updated", "success");
         setEditingPost(null);
       } else {
@@ -125,6 +165,7 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
       setNewPostContent('');
       setSelectedImage(null);
       setIsPublic(false);
+      setPostType('Post Type');
     } catch (error) {
       console.error("Feed submit error:", error);
       showToast("Failed to sync with feed", "error");
@@ -148,7 +189,7 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
   const startEdit = (post: FeedPost) => {
     setEditingPost(post);
     setNewPostContent(post.content);
-    setSelectedImage(post.imageUrl || null);
+    setSelectedImage(post.imageUrl ? { feedThumb: post.imageUrl, fullDisplay: post.fullDisplayUrl || post.imageUrl } : null);
     setIsPublic(post.isPublic ?? false);
     if (post.postType) {
       setPostType(post.postType as any);
@@ -270,10 +311,10 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
               {selectedImage && (
                 <div className="mt-4 relative group w-fit max-w-full">
                   <img 
-                    src={selectedImage} 
+                    src={selectedImage.feedThumb} 
                     alt="Post preview" 
                     className="max-h-[300px] sm:max-h-[400px] w-auto rounded-xl border border-brand-border shadow-2xl cursor-zoom-in" 
-                    onClick={() => setFullViewImage(selectedImage)}
+                    onClick={() => setFullViewImage(selectedImage.fullDisplay)}
                   />
                   <button 
                     type="button"
@@ -286,12 +327,15 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                <label className="cursor-pointer flex items-center justify-center p-3.5 rounded-xl bg-brand-surface border border-brand-border text-brand-text-muted hover:text-brand-cyan hover:bg-brand-cyan/5 transition-all" title="Upload Image">
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                  <ImageIcon size={22} />
-                </label>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  <label className={cn(
+                    "cursor-pointer flex items-center justify-center p-3.5 rounded-xl bg-brand-surface border border-brand-border text-brand-text-muted transition-all",
+                    isProcessingImage ? "opacity-50 pointer-events-none" : "hover:text-brand-cyan hover:bg-brand-cyan/5"
+                  )} title="Upload Image">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={isProcessingImage} />
+                    {isProcessingImage ? <Loader2 className="animate-spin" size={22} /> : <ImageIcon size={22} />}
+                  </label>
 
                 {/* POST TYPE DROPDOWN */}
                 <select
@@ -434,32 +478,39 @@ export function UserFeed({ user, userProfile, role, onBack, showToast }: UserFee
                 </div>
 
                 {post.imageUrl && (
-                  <div className="rounded-[1.5rem] border border-brand-border overflow-hidden mb-6 shadow-2xl bg-brand-surface-2 group/img relative">
-                    <img 
-                      src={post.imageUrl} 
-                      alt="Shared visualization" 
-                      className="w-full h-auto max-h-[700px] object-contain mx-auto transition-transform duration-500 group-hover/img:scale-[1.02] cursor-zoom-in" 
-                      onClick={() => setFullViewImage(post.imageUrl || null)}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-brand-bg/10 transition-colors pointer-events-none flex items-center justify-center">
-                       <Sparkles className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity scale-150" />
-                    </div>
-                  </div>
+                  <BroadcastImage 
+                    src={post.imageUrl} 
+                    onExpand={() => setFullViewImage(post.fullDisplayUrl || post.imageUrl || null)}
+                    className="mb-6"
+                  />
                 )}
 
-                <div className="pt-6 border-t border-brand-border/50 flex items-center gap-8 text-brand-text-muted/40">
-                   <button className="flex items-center gap-2.5 group/btn hover:text-brand-purple transition-all">
-                     <div className="p-2 rounded-lg group-hover/btn:bg-brand-purple/10 transition-colors">
-                       <Heart size={18} />
-                     </div>
-                     <span className="text-xs font-black font-mono tracking-tighter group-hover/btn:text-brand-purple">0</span>
-                   </button>
-                   <button className="flex items-center gap-2.5 group/btn hover:text-brand-cyan transition-all">
-                     <div className="p-2 rounded-lg group-hover/btn:bg-brand-cyan/10 transition-colors">
-                       <MessageSquare size={18} />
-                     </div>
-                     <span className="text-xs font-black font-mono tracking-tighter group-hover/btn:text-brand-cyan">0</span>
-                   </button>
+                <div className="pt-6 border-t border-brand-border/50 flex flex-wrap items-center gap-4 sm:gap-6">
+                   {REACTION_TYPES.map(({ emoji, label }) => {
+                     const reactionUsers = post.reactions?.[label] || [];
+                     const hasReacted = user && reactionUsers.includes(user.uid);
+                     const count = reactionUsers.length;
+
+                     return (
+                       <button 
+                        key={label}
+                        onClick={() => handleReaction(post.id, label)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95",
+                          hasReacted 
+                            ? "bg-brand-cyan/10 border-brand-cyan/30 text-brand-cyan shadow-[0_0_10px_rgba(6,178,210,0.1)]" 
+                            : "bg-brand-surface/40 border-brand-border/20 text-brand-text-muted hover:border-brand-border"
+                        )}
+                       >
+                         {emoji}
+                         {count > 0 && (
+                           <span className="text-[10px] font-black font-mono tracking-tighter">
+                             {count}
+                           </span>
+                         )}
+                       </button>
+                     );
+                   })}
                 </div>
               </div>
             </motion.div>
