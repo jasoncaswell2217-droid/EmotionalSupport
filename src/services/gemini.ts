@@ -74,8 +74,8 @@ const requestInformationTool = {
 export const startChat = () => {
   return {
     sendMessage: async ({ message, history = [] }: { message: any, history?: Message[] }) => {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}api/gemini/chat`.replace(/\/+/g, '/'), {
+      // Use relative path to work correctly regardless of base path
+      const response = await fetch("api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -87,8 +87,23 @@ export const startChat = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          errorData = await response.json();
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON error response:", text.substring(0, 500));
+          errorData = { error: { message: `Server error: ${response.status} ${response.statusText}`, status: response.status } };
+        }
         throw errorData;
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Expected JSON but received:", text.substring(0, 500));
+        throw { error: { message: "Unexpected server response format. The server might be misconfigured.", status: 500 } };
       }
 
       return await response.json();

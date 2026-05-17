@@ -28,9 +28,9 @@ export function ApiStatusTracker({ variant = 'full' }: { variant?: 'full' | 'min
   const checkHealth = async () => {
     setIsLoading(true);
     try {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}api/health`.replace(/\/+/g, '/'));
-      if (!response.ok) throw new Error('API Unreachable');
+      // Use relative path to work correctly regardless of base path
+      const response = await fetch("api/health");
+      if (!response.ok) throw new Error(`API Unreachable: ${response.status}`);
       const data = await response.json();
       setHealth(data);
       setLastChecked(new Date());

@@ -42,7 +42,7 @@ let apiStats = {
 // Request logging middleware
 app.use((req, res, next) => {
   if (req.url.includes('/api/')) {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Headers: ${JSON.stringify(req.headers['x-forwarded-for'] || req.ip)}`);
   }
   next();
 });
@@ -54,6 +54,8 @@ apiRouter.use((req, res, next) => {
   console.log(`API Router reached: ${req.method} ${req.url}`);
   next();
 });
+
+// ... health and chat routes ...
 
 apiRouter.get("/health", (req, res) => {
   console.log("Health check requested");
@@ -184,9 +186,25 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support both root and /psychelense prefixed requests
+// Support various prefixing common in sub-directory deployments
 app.use("/api", apiRouter);
 app.use("/psychelense/api", apiRouter);
+app.use("/psychelense/psychelense/api", apiRouter); // Catch double-prefixing quirks
+
+// Helper to check if a request is likely an API request that failed
+app.use((req, res, next) => {
+  if (req.url.includes('/api/')) {
+    console.warn(`Unmatched API request: ${req.method} ${req.url}`);
+    return res.status(404).json({ 
+      error: { 
+        message: `API Route not found on this server: ${req.method} ${req.url}. If this is a sub-directory deployment, check BASE_URL config.`,
+        path: req.url,
+        status: 404 
+      } 
+    });
+  }
+  next();
+});
 
 async function startServer() {
   // Vite middleware for development
