@@ -186,8 +186,11 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support standard API prefix
-app.use("/api", apiRouter);
+// Support various prefixing common in sub-directory deployments
+const apiPrefixes = ["/api", "/psychelense/api"];
+apiPrefixes.forEach(prefix => {
+  app.use(prefix, apiRouter);
+});
 
 async function startServer() {
   // Vite middleware for development
@@ -199,7 +202,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    // Serve static files from the root and the subdirectory
     app.use(express.static(distPath));
+    app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
