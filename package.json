@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build --outDir out && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=out/server.cjs",
-    "start": "node out/server.cjs",
-    "build:spa": "vite build --outDir out",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "build:spa": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf out",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

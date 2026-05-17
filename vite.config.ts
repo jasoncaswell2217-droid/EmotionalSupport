@@ -8,7 +8,7 @@ export default defineConfig(({mode}) => {
   return {
     base: '/psychelense/',
     build: {
-      outDir: 'out',
+      outDir: 'dist',
     },
     plugins: [react(), tailwindcss()],
     resolve: {

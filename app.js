@@ -9,7 +9,7 @@ console.log("Current Directory:", process.cwd());
 process.env.NODE_ENV = 'production';
 
 // Load the bundled server
-import('./out/server.cjs')
+import('./dist/server.cjs')
   .then(() => {
     console.log("PsycheLens: Core modules synthesized successfully.");
   })
