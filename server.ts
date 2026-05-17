@@ -163,9 +163,8 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support standard API prefix and potential subdirectory prefix
+// Support standard API prefix
 app.use("/api", apiRouter);
-app.use("/psychelense/api", apiRouter);
 
 async function startServer() {
   // Vite middleware for development
@@ -178,11 +177,9 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    // Also serve static files from the subdirectory path for safety
-    app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
-      // Don't serve index.html for API requests that missed the router
+      // Don't serve index.html for API requests
       if (req.url.includes('/api/')) {
         return res.status(404).json({ error: "API Route not found" });
       }
