@@ -1,23 +1,26 @@
 /**
  * Root entry point for cPanel Node.js Selector
- * This file points to the bundled server code in dist/server.cjs
  */
-console.log("Starting PsychLens Server...");
+console.log("--- PSYCHELENS BOOTSTRAP START ---");
+console.log("Time:", new Date().toISOString());
+console.log("CWD:", process.cwd());
+console.log("ExecPath:", process.execPath);
 
-// Set production environment if not already set
-if (!process.env.NODE_ENV) {
-  process.env.NODE_ENV = 'production';
-}
+// Force production mode
+process.env.NODE_ENV = 'production';
 
-console.log("Environment:", process.env.NODE_ENV);
-console.log("Process CWD:", process.cwd());
+// Attempt to load the server bundle
+const bundlePath = './dist/server.cjs';
+console.log(`Loading bundle from: ${bundlePath}`);
 
-import('./dist/server.cjs')
+import(bundlePath)
   .then(() => {
-    console.log("Server bundle loaded successfully.");
+    console.log("--- PSYCHELENS BUNDLE LOADED ---");
   })
   .catch(err => {
-    console.error("CRITICAL: Failed to load server bundle!");
+    console.error("!!! CRITICAL BOOTSTRAP FAILURE !!!");
     console.error(err);
+    // Explicitly log the stack trace
+    if (err.stack) console.error(err.stack);
     process.exit(1);
   });

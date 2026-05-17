@@ -14,6 +14,7 @@ let aiClient: any = null;
 function getAi() {
   if (!aiClient) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY || "";
+    console.log(`Initializing Gemini client with key prefix: ${apiKey.substring(0, 4)}...`);
     aiClient = new GoogleGenAI({
       apiKey,
       httpOptions: {
@@ -30,21 +31,21 @@ function getAi() {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// API status tracking
-let lastApiError: { message: string; timestamp: number } | null = null;
-let apiStats = {
-  totalCalls: 0,
-  successfulCalls: 0,
-  failedCalls: 0,
-  lastCallTimestamp: 0
-};
-
-// Request logging middleware
+// Performance and Request logging middleware
 app.use((req, res, next) => {
-  if (req.url.includes('/api/')) {
-    console.log(`[API REQUEST] ${new Date().toISOString()} - ${req.method} ${req.url}`);
-    console.log(`[HEADERS] ${JSON.stringify(req.headers)}`);
+  const start = Date.now();
+  const isApi = req.url.includes('/api/');
+  
+  if (isApi) {
+    console.log(`[INCOMING] ${req.method} ${req.url}`);
   }
+  
+  res.on('finish', () => {
+    if (isApi || res.statusCode >= 400) {
+      const duration = Date.now() - start;
+      console.log(`[RESPONSE] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    }
+  });
   next();
 });
 
@@ -74,9 +75,8 @@ apiRouter.get("/health", (req, res) => {
 });
 
 apiRouter.post("/gemini/chat", async (req, res) => {
+  console.log("!!! Gemini Chat Route Triggered !!!");
   const { history, message, systemInstruction, tools } = req.body;
-  apiStats.totalCalls++;
-  apiStats.lastCallTimestamp = Date.now();
   
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.VITE_GEMINI_API || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
@@ -189,19 +189,27 @@ apiRouter.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Support various prefixing common in sub-directory deployments
-const apiPrefixes = ["/api", "/psychelense/api", "/psychelense/psychelense/api"];
-apiPrefixes.forEach(prefix => {
-  console.log(`Registering API prefix: ${prefix}`);
-  app.use(prefix, apiRouter);
-});
-
-// Catch-all for API requests that missed everything before static files
+// Improved Prefix handling: match /api regardless of what comes before it in the path
 app.use((req, res, next) => {
-  if (req.url.includes('/api/')) {
-    console.warn(`[UNMATCHED API] ${req.method} ${req.url}`);
+  const url = req.url;
+  // If it's an API call, we want to make sure it gets to the apiRouter
+  // Even if the prefix is slightly different than expected
+  if (url.includes('/api/')) {
+    console.log(`[ROUTING] API path detected: ${url}`);
+    
+    // If it's like /psychelense/api/..., strip the /psychelense/ prefix for the router
+    if (url.startsWith('/psychelense/api/')) {
+       req.url = url.replace('/psychelense', '');
+       console.log(`[ROUTING] Rewrote URL to: ${req.url}`);
+       return apiRouter(req, res, next);
+    }
   }
   next();
+});
+
+const apiPrefixes = ["/api", "/psychelense/api"];
+apiPrefixes.forEach(prefix => {
+  app.use(prefix, apiRouter);
 });
 
 async function startServer() {
@@ -219,6 +227,17 @@ async function startServer() {
     app.use('/psychelense', express.static(distPath));
     
     app.get('*', (req, res) => {
+      // Avoid serving index.html for API requests that were never matched
+      if (req.url.includes('/api/')) {
+        console.warn(`[API 404 Catch-all] ${req.method} ${req.url}`);
+        return res.status(404).json({ 
+          error: { 
+            message: `API Route not found: ${req.method} ${req.url}`, 
+            status: 404,
+            suggestion: "Check if the server is omitting the base path in API requests"
+          } 
+        });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
