@@ -176,7 +176,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), 'out');
     app.use(express.static(distPath));
     // Also serve static files from the subdirectory path for safety
     app.use('/psychelense', express.static(distPath));
